@@ -179,7 +179,7 @@
                 try {
                     localStorage.setItem('rawWorkbookBinary', rawWorkbookBinary);
                 } catch(e) {
-                    console.warn("Binary storage quota exceeded.");
+                    console.warn("Storage quota exceeded.");
                 }
             }
         }
@@ -407,7 +407,6 @@
             return [];
         }
 
-        /* --- SENARAI PERALATAN (Paparan Nama Sahaja) --- */
         function renderEquipmentList(container) {
             renderSearchBar(container, "Search Equipment Name...");
             let items = getFilteredCurrentItems();
@@ -482,7 +481,7 @@
                         code, 
                         name, 
                         imageUri: state.tempImgUri,
-                        r: existingItem ? existingItem.r : null
+                        extraCells: existingItem ? existingItem.extraCells : {}
                     });
                     addLog(`Transferred Equipment ${code} from ${state.currentLab} to ${targetLab}`);
                 } else {
@@ -491,7 +490,7 @@
                     addLog(`Updated Equipment: ${code} in ${state.currentLab}`);
                 }
             } else {
-                targetProfile.equipmentList.push({ code, name, imageUri: state.tempImgUri, r: null });
+                targetProfile.equipmentList.push({ code, name, imageUri: state.tempImgUri, extraCells: {} });
                 addLog(`Added Equipment: ${code} (${name}) in ${targetLab}`);
             }
 
@@ -800,14 +799,14 @@
             container.innerHTML = `
                 <div class="card">
                     <h2>App Information</h2>
-                    <p>Version: v4.0.0 (Strict Native Binary Preservation)</p>
+                    <p>Version: v5.0.0 (Perfect In-Place Cell Mutation)</p>
                     <button class="btn btn-purple" onclick="switchScreen('LOGS')">📜 View Activity Logs</button>
                 </div>
 
                 <div class="card">
-                    <h2>Excel File Actions</h2>
+                    <h2>Excel File Options</h2>
                     <button class="btn btn-green" onclick="triggerExcelImport()">📂 Import Original Excel File (.xlsx)</button>
-                    <button class="btn btn-purple" onclick="exportFormattedExcel()">💾 Save & Export Exact Excel (.xlsx)</button>
+                    <button class="btn btn-purple" onclick="exportFormattedExcel()">💾 Save & Download Exact Excel (.xlsx)</button>
                 </div>
             `;
         }
@@ -824,7 +823,7 @@
             container.innerHTML = html;
         }
 
-        /* --- FUNGSI PARSER EXCEL TEPAT BERDASARKAN KOORDINAT LAJUR ASAL (C = No, D = Description, T = Stock Code) --- */
+        /* --- FUNGSI READ EXCEL --- */
         function triggerExcelImport() {
             document.getElementById('file-input-excel').click();
         }
@@ -840,7 +839,6 @@
                 try {
                     let arrayBuffer = evt.target.result;
                     
-                    // Simpan binary asal secara penuh dalam format Base64
                     let binary = "";
                     let bytes = new Uint8Array(arrayBuffer);
                     for (let i = 0; i < bytes.byteLength; i++) {
@@ -861,15 +859,13 @@
                             labProfiles[trimmedName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                         }
                         let profile = labProfiles[trimmedName];
+                        profile.equipmentList = []; // Reset untukelakkan duplikasi
 
-                        // Pada fail template asal:
-                        // Lajur D (Index 3) = Description of Stock Items
-                        // Lajur T (Index 19) = Stock Code
-                        let startRow = 11; // Baris data bermula di baris 12 (0-indexed R = 11)
+                        let startRow = 11; // Baris 12 (0-indexed R=11)
 
                         for (let R = startRow; R < 200; ++R) {
-                            let descRef = XLSX.utils.encode_cell({c: 3, r: R});  // Col D
-                            let codeRef = XLSX.utils.encode_cell({c: 19, r: R}); // Col T
+                            let descRef = XLSX.utils.encode_cell({c: 3, r: R});  // Lajur D
+                            let codeRef = XLSX.utils.encode_cell({c: 19, r: R}); // Lajur T
 
                             let descCell = worksheet[descRef];
                             let codeCell = worksheet[codeRef];
@@ -877,19 +873,25 @@
                             let rawName = descCell ? String(descCell.v || '').trim().replace(/\r?\n|\r/g, " ") : '';
                             let rawCode = codeCell ? String(codeCell.v || '').trim() : '';
 
-                            if (rawName && rawName.includes("Prepared by:")) break; // Sampai kawasan footer pengesahan
+                            if (rawName && rawName.includes("Prepared by:")) break;
 
                             if (rawName && rawCode && !rawCode.startsWith("(")) {
-                                let exists = profile.equipmentList.some(eq => eq.code.toLowerCase() === rawCode.toLowerCase());
-                                if (!exists) {
-                                    profile.equipmentList.push({ 
-                                        code: rawCode, 
-                                        name: rawName, 
-                                        imageUri: null,
-                                        r: R 
-                                    });
-                                    totalImported++;
+                                let extra = {};
+                                // Simpan data asal lajur E sehingga S dan U hingga W
+                                for (let C = 0; C < 24; ++C) {
+                                    let cRef = XLSX.utils.encode_cell({c: C, r: R});
+                                    if (worksheet[cRef]) {
+                                        extra[C] = worksheet[cRef];
+                                    }
                                 }
+
+                                profile.equipmentList.push({ 
+                                    code: rawCode, 
+                                    name: rawName, 
+                                    imageUri: null,
+                                    extraCells: extra
+                                });
+                                totalImported++;
                             }
                         }
                         sheetsParsed++;
@@ -913,7 +915,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        /* --- FUNGSI EXPORT: MENSUNTING SEL SECARA DIRECT TANPA MENGUBAH FORMAT/GAYA LAJUR ASAL --- */
+        /* --- FUNGSI SAVE EXCEL TERUS (DIRECT CELL EDIT & AUTO SHIFT UP) --- */
         function exportFormattedExcel() {
             try {
                 if (!originalWorkbookBinary) {
@@ -921,14 +923,12 @@
                     return;
                 }
 
-                // Convert Base64 back to Uint8Array
                 let binaryStr = atob(originalWorkbookBinary);
                 let bytes = new Uint8Array(binaryStr.length);
                 for (let i = 0; i < binaryStr.length; i++) {
                     bytes[i] = binaryStr.charCodeAt(i);
                 }
 
-                // Parse binary workbook
                 let workbook = XLSX.read(bytes.buffer, { type: 'array', cellStyles: true, cellFormulas: true, cellDates: true, cellNF: true });
 
                 Object.keys(labProfiles).forEach(labName => {
@@ -937,50 +937,55 @@
 
                     if (!worksheet) return;
 
-                    let startRow = 11; // Row 12 (0-indexed R = 11)
+                    let startRow = 11; // Baris 12 (0-indexed R=11)
+                    let footerStartR = -1;
 
-                    // 1. Kosongkan nilai lama dalam julat jadual (Col C, D, T, U)
-                    for (let R = startRow; R < 150; ++R) {
+                    // 1. Cari di mana terletaknya blok footer (Prepared by:)
+                    for (let R = startRow; R < 200; ++R) {
                         let descRef = XLSX.utils.encode_cell({c: 3, r: R});
-                        if (worksheet[descRef] && String(worksheet[descRef].v).includes("Prepared by:")) break;
-
-                        let noRef = XLSX.utils.encode_cell({c: 2, r: R});
-                        let codeRef = XLSX.utils.encode_cell({c: 19, r: R});
-                        let locRef = XLSX.utils.encode_cell({c: 20, r: R});
-
-                        if (worksheet[noRef]) worksheet[noRef].v = "";
-                        if (worksheet[descRef]) worksheet[descRef].v = "";
-                        if (worksheet[codeRef]) worksheet[codeRef].v = "";
-                        if (worksheet[locRef]) worksheet[locRef].v = "";
+                        if (worksheet[descRef] && String(worksheet[descRef].v).includes("Prepared by:")) {
+                            footerStartR = R;
+                            break;
+                        }
                     }
 
-                    // 2. Kemaskini sel pada koordinat tepat
+                    // 2. Kosongkan semua baris data lama dari startRow hingga sebelum footerStartR
+                    let clearEndR = footerStartR !== -1 ? footerStartR : 150;
+                    for (let R = startRow; R < clearEndR; ++R) {
+                        for (let C = 0; C < 24; ++C) {
+                            let cellRef = XLSX.utils.encode_cell({c: C, r: R});
+                            delete worksheet[cellRef];
+                        }
+                    }
+
+                    // 3. Tulis semula senarai peralatan semasa satu per satu (Auto Shift Up)
                     profile.equipmentList.forEach((item, index) => {
                         let targetRow = startRow + index;
 
-                        let noRef = XLSX.utils.encode_cell({c: 2, r: targetRow});  // Col C
-                        let descRef = XLSX.utils.encode_cell({c: 3, r: targetRow}); // Col D
-                        let codeRef = XLSX.utils.encode_cell({c: 19, r: targetRow});// Col T
-                        let locRef = XLSX.utils.encode_cell({c: 20, r: targetRow}); // Col U
+                        // Pulihkan data lajur asal jika wujud
+                        if (item.extraCells) {
+                            Object.keys(item.extraCells).forEach(cIdx => {
+                                let cRef = XLSX.utils.encode_cell({c: parseInt(cIdx), r: targetRow});
+                                worksheet[cRef] = Object.assign({}, item.extraCells[cIdx]);
+                            });
+                        }
 
-                        if (!worksheet[noRef]) worksheet[noRef] = { t: 'n' };
-                        worksheet[noRef].v = index + 1;
+                        let noRef = XLSX.utils.encode_cell({c: 2, r: targetRow});   // Col C
+                        let descRef = XLSX.utils.encode_cell({c: 3, r: targetRow});  // Col D
+                        let codeRef = XLSX.utils.encode_cell({c: 19, r: targetRow}); // Col T
+                        let locRef = XLSX.utils.encode_cell({c: 20, r: targetRow});  // Col U
 
-                        if (!worksheet[descRef]) worksheet[descRef] = { t: 's' };
-                        worksheet[descRef].v = item.name;
-
-                        if (!worksheet[codeRef]) worksheet[codeRef] = { t: 's' };
-                        worksheet[codeRef].v = item.code;
-
-                        if (!worksheet[locRef]) worksheet[locRef] = { t: 's' };
-                        worksheet[locRef].v = labName;
+                        worksheet[noRef] = { t: 'n', v: index + 1 };
+                        worksheet[descRef] = { t: 's', v: item.name };
+                        worksheet[codeRef] = { t: 's', v: item.code };
+                        worksheet[locRef] = { t: 's', v: labName };
                     });
                 });
 
-                // Muat turun fail yang telah dikemaskini tanpa mengubah format langsung
+                // Simpan fail Excel
                 XLSX.writeFile(workbook, originalFileName);
                 addLog("Saved inventory directly into original binary Excel template");
-                alert("Fail Excel berjaya disimpan! Format, kelebaran lajur, dan gaya asal dipelihara 100% sempurna.");
+                alert("Fail Excel berjaya disimpan! Baris kosong dipadamkan secara automatik dan susunan asal dipelihara 100%.");
 
             } catch (err) {
                 console.error(err);
