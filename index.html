@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MechLab">
     
-    <!-- Pustaka SheetJS untuk Membaca Fail Excel (.xlsx / .xls) -->
+    <!-- Pustaka SheetJS untuk Membaca & Menulis Fail Excel (.xlsx / .xls) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -166,6 +166,7 @@
 
         let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {};
         let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
+        let rawWorkbookStructure = JSON.parse(localStorage.getItem('rawWorkbookStructure')) || {};
         
         let labKeys = Object.keys(labProfiles);
         state.currentLab = localStorage.getItem('currentLab') || (labKeys.length > 0 ? labKeys[0] : '');
@@ -174,6 +175,7 @@
             localStorage.setItem('labProfiles', JSON.stringify(labProfiles));
             localStorage.setItem('activityLogs', JSON.stringify(activityLogs));
             localStorage.setItem('currentLab', state.currentLab);
+            localStorage.setItem('rawWorkbookStructure', JSON.stringify(rawWorkbookStructure));
         }
 
         function addLog(action) {
@@ -321,6 +323,7 @@
             if (!state.currentLab) return;
             if (confirm(`Are you sure you want to delete lab location '${state.currentLab}'?\nAll records inside will be permanently removed!`)) {
                 delete labProfiles[state.currentLab];
+                delete rawWorkbookStructure[state.currentLab];
                 addLog(`Deleted lab profile: ${state.currentLab}`);
                 let keys = Object.keys(labProfiles);
                 state.currentLab = keys.length > 0 ? keys[0] : '';
@@ -399,7 +402,7 @@
             return [];
         }
 
-        /* --- SENARAI PERALATAN (PERUBAHAN: Nama Sahaja Dipaparkan) --- */
+        /* --- SENARAI PERALATAN (Nama Sahaja Dipaparkan di Skrin Utama) --- */
         function renderEquipmentList(container) {
             renderSearchBar(container, "Search Equipment Name...");
             let items = getFilteredCurrentItems();
@@ -433,6 +436,10 @@
             let item = activeLab ? activeLab.equipmentList.find(i => i.code === state.editingId) : null;
             state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
 
+            let labsOptions = Object.keys(labProfiles).map(l => 
+                `<option value="${l}" ${l === state.currentLab ? 'selected' : ''}>${l}</option>`
+            ).join('');
+
             container.innerHTML = `
                 ${renderImageEditorHTML()}
                 <label>📦 Stock List Number / Equipment Code:</label>
@@ -440,6 +447,11 @@
                 
                 <label>⚙ Equipment Name:</label>
                 <input type="text" id="eq-name" placeholder="e.g. Governors Apparatus" value="${item ? item.name : ''}">
+
+                <label>📍 Location / Room (Transfer Equipment):</label>
+                <select id="eq-lab-target">
+                    ${labsOptions}
+                </select>
 
                 <button class="btn btn-green" onclick="saveEquipment()">💾 Save Equipment</button>
                 ${item ? `<button class="btn btn-red" onclick="deleteSingleItem('equipmentList', '${item.code}')">❌ Delete Equipment</button>` : ''}
@@ -450,17 +462,28 @@
         function saveEquipment() {
             let code = document.getElementById('eq-code').value.trim();
             let name = document.getElementById('eq-name').value.trim();
+            let targetLab = document.getElementById('eq-lab-target').value;
             if (!code || !name) { alert("Enter Stock Code and Equipment Name!"); return; }
 
-            let activeLab = labProfiles[state.currentLab];
+            let currentProfile = labProfiles[state.currentLab];
+            let targetProfile = labProfiles[targetLab];
+
             if (state.editingId) {
-                let item = activeLab.equipmentList.find(i => i.code === state.editingId);
-                if (item) { item.code = code; item.name = name; item.imageUri = state.tempImgUri; }
-                addLog(`Updated Equipment: ${code} in ${state.currentLab}`);
+                // Remove item from current lab if moved to another lab
+                if (targetLab !== state.currentLab) {
+                    currentProfile.equipmentList = currentProfile.equipmentList.filter(i => i.code !== state.editingId);
+                    targetProfile.equipmentList.push({ code, name, imageUri: state.tempImgUri, rawRow: null });
+                    addLog(`Transferred Equipment ${code} from ${state.currentLab} to ${targetLab}`);
+                } else {
+                    let item = currentProfile.equipmentList.find(i => i.code === state.editingId);
+                    if (item) { item.code = code; item.name = name; item.imageUri = state.tempImgUri; }
+                    addLog(`Updated Equipment: ${code} in ${state.currentLab}`);
+                }
             } else {
-                activeLab.equipmentList.push({ code, name, imageUri: state.tempImgUri });
-                addLog(`Added Equipment: ${code} (${name}) in ${state.currentLab}`);
+                targetProfile.equipmentList.push({ code, name, imageUri: state.tempImgUri, rawRow: null });
+                addLog(`Added Equipment: ${code} (${name}) in ${targetLab}`);
             }
+
             saveData();
             goBack();
         }
@@ -621,7 +644,7 @@
             goBack();
         }
 
-        /* --- SENARAI WRITE OFF (PERUBAHAN: Nama Sahaja Dipaparkan) --- */
+        /* --- SENARAI WRITE OFF (Nama Sahaja Dipaparkan) --- */
         function renderWriteOffList(container) {
             renderSearchBar(container, "Search Write Off Asset Name...");
             let items = getFilteredCurrentItems();
@@ -767,15 +790,16 @@
             container.innerHTML = `
                 <div class="card">
                     <h2>App Information</h2>
-                    <p>Version: v1.3.0 (PWA Web Edition)</p>
+                    <p>Version: v1.4.0 (PWA Web Edition)</p>
                     <button class="btn btn-purple" onclick="switchScreen('LOGS')">📜 View Activity Logs</button>
                 </div>
 
                 <div class="card">
                     <h2>Data Import & Export</h2>
-                    <button class="btn btn-green" onclick="triggerExcelImport()">📊 Import Excel File (.xlsx / .xls)</button>
+                    <button class="btn btn-green" onclick="triggerExcelImport()">📂 Import Excel File (.xlsx / .xls)</button>
+                    <button class="btn btn-purple" onclick="exportFormattedExcel()">📊 Export to Excel (.xlsx) [Kekalkan Format & Auto Create Tab]</button>
                     <button class="btn btn-blue" onclick="triggerCSVImport(false)">📂 Import CSV File (Append Data)</button>
-                    <button class="btn btn-purple" onclick="exportCSV()">💾 Export Data to CSV File</button>
+                    <button class="btn btn-navy" onclick="exportCSV()">💾 Export Data to CSV File</button>
                     <button class="btn btn-red" onclick="triggerCSVImport(true)">⚠️ Overwrite & Replace Data from CSV</button>
                 </div>
             `;
@@ -813,7 +837,6 @@
 
                     workbook.SheetNames.forEach(sheetName => {
                         let trimmedName = sheetName.trim();
-                        // Abaikan sheet rekapitulasi/lupus
                         if (trimmedName.toLowerCase().includes("written off") || trimmedName.toLowerCase().includes("summary")) {
                             return;
                         }
@@ -825,7 +848,6 @@
                         let stockCodeColIndex = -1;
                         let startRowIndex = -1;
 
-                        // Cari baris header yang mengandungi lajur 'Description' dan 'Stock Code'
                         for (let r = 0; r < jsonData.length; r++) {
                             let row = jsonData[r];
                             if (!row) continue;
@@ -841,15 +863,20 @@
                             if (descColIndex !== -1 && stockCodeColIndex !== -1) break;
                         }
 
-                        if (descColIndex === -1 || (stockCodeColIndex !== -1 && false)) return;
+                        if (descColIndex === -1) return;
 
-                        // Cipta profil makmal baru jika belum ada
                         if (!labProfiles[trimmedName]) {
                             labProfiles[trimmedName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                         }
                         let profile = labProfiles[trimmedName];
 
-                        // Ekstrak item
+                        // Simpan struktur matriks asal sheet untuk mengekalkan header asal
+                        rawWorkbookStructure[trimmedName] = {
+                            headerRows: jsonData.slice(0, startRowIndex),
+                            descColIndex: descColIndex,
+                            stockCodeColIndex: stockCodeColIndex !== -1 ? stockCodeColIndex : 19
+                        };
+
                         for (let r = startRowIndex; r < jsonData.length; r++) {
                             let row = jsonData[r];
                             if (!row) continue;
@@ -860,7 +887,12 @@
                             if (rawCode && rawName && !rawCode.startsWith("(")) {
                                 let exists = profile.equipmentList.some(eq => eq.code.toLowerCase() === rawCode.toLowerCase());
                                 if (!exists) {
-                                    profile.equipmentList.push({ code: rawCode, name: rawName, imageUri: null });
+                                    profile.equipmentList.push({ 
+                                        code: rawCode, 
+                                        name: rawName, 
+                                        imageUri: null,
+                                        rawRow: row // Menyimpan data spesifik asal (harga, tarikh, dll.)
+                                    });
                                     totalImported++;
                                 }
                             }
@@ -875,7 +907,7 @@
 
                     saveData();
                     addLog(`Imported ${totalImported} items from Excel across ${sheetsParsed} sheet(s)`);
-                    alert(`Berjaya mengimport ${totalImported} peralatan daripada ${sheetsParsed} kepingan (sheets) Excel!`);
+                    alert(`Berjaya mengimport ${totalImported} peralatan daripada ${sheetsParsed} tab Excel!`);
                     switchScreen('HOME');
 
                 } catch (err) {
@@ -884,6 +916,123 @@
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        /* --- FUNGSI EXPORT KE EXCEL (MEMELIHARA FORMAT ASAL & AUTO CREATE TAB) --- */
+        function exportFormattedExcel() {
+            try {
+                let newWorkbook = XLSX.utils.book_new();
+
+                // 1. Bina Sheet Makmal/Equipment mengekalkan susunan asal
+                Object.keys(labProfiles).forEach(labName => {
+                    let profile = labProfiles[labName];
+                    let rawStruct = rawWorkbookStructure[labName];
+
+                    let sheetData = [];
+
+                    if (rawStruct && rawStruct.headerRows) {
+                        // Salin baris header asal sebijik
+                        rawStruct.headerRows.forEach(hRow => sheetData.push([...hRow]));
+
+                        let descIdx = rawStruct.descColIndex;
+                        let codeIdx = rawStruct.stockCodeColIndex;
+
+                        profile.equipmentList.forEach((item, index) => {
+                            let newRow = item.rawRow ? [...item.rawRow] : [];
+                            // Re-assign No, Stock Code, dan Name
+                            newRow[codeIdx] = item.code;
+                            newRow[descIdx] = item.name;
+                            newRow[descIdx - 1] = index + 1; // No.
+                            
+                            // Kemaskini lokasi dalam lajur jika wujud
+                            if (newRow.length > descIdx + 1) {
+                                newRow[descIdx + 1] = labName;
+                            }
+
+                            sheetData.push(newRow);
+                        });
+                    } else {
+                        // Jika tiada format template asal, bina header laluan
+                        sheetData.push(["TUNKU ABDUL RAHMAN UNIVERSITY OF MANAGEMENT AND TECHNOLOGY"]);
+                        sheetData.push(["FACULTY OF ENGINEERING AND TECHNOLOGY (FOET)"]);
+                        sheetData.push(["DEPARTMENT OF MECHANICAL ENGINEERING (" + labName + ")"]);
+                        sheetData.push([]);
+                        sheetData.push(["No.", "Description of Stock Items", "Stock Code", "Location of Asset"]);
+
+                        profile.equipmentList.forEach((item, index) => {
+                            sheetData.push([index + 1, item.name, item.code, labName]);
+                        });
+                    }
+
+                    let ws = XLSX.utils.aoa_to_sheet(sheetData);
+                    XLSX.utils.book_append_sheet(newWorkbook, ws, labName.substring(0, 31));
+                });
+
+                // 2. Auto Create Tab Khas: Teaching Materials (Jika Wujud Data)
+                let allTeachingData = [];
+                Object.keys(labProfiles).forEach(labName => {
+                    labProfiles[labName].teachingList.forEach(t => {
+                        allTeachingData.push([labName, t.name, t.qtyUnit, t.remarks || '']);
+                    });
+                });
+
+                if (allTeachingData.length > 0) {
+                    let tmSheetData = [
+                        ["TEACHING MATERIALS ORDER SUMMARY"],
+                        [],
+                        ["Lab Location", "Item Name", "Quantity / Unit", "Remarks"]
+                    ];
+                    allTeachingData.forEach(row => tmSheetData.push(row));
+                    let tmWs = XLSX.utils.aoa_to_sheet(tmSheetData);
+                    XLSX.utils.book_append_sheet(newWorkbook, tmWs, "Teaching Materials");
+                }
+
+                // 3. Auto Create Tab Khas: Faulty Reports (Jika Wujud Data)
+                let allFaultyData = [];
+                Object.keys(labProfiles).forEach(labName => {
+                    labProfiles[labName].faultyList.forEach(f => {
+                        allFaultyData.push([labName, f.stockCode || '', f.name, f.problem, f.date, f.status, f.remarks || '']);
+                    });
+                });
+
+                if (allFaultyData.length > 0) {
+                    let fSheetData = [
+                        ["FAULTY AND REPAIR REPORTS SUMMARY"],
+                        [],
+                        ["Lab Location", "Stock Code", "Equipment Name", "Problem Description", "Reported Date", "Status", "Remarks"]
+                    ];
+                    allFaultyData.forEach(row => fSheetData.push(row));
+                    let fWs = XLSX.utils.aoa_to_sheet(fSheetData);
+                    XLSX.utils.book_append_sheet(newWorkbook, fWs, "Faulty Reports");
+                }
+
+                // 4. Auto Create Tab Khas: Asset Write Off (Jika Wujud Data)
+                let allWriteOffData = [];
+                Object.keys(labProfiles).forEach(labName => {
+                    labProfiles[labName].writeOffList.forEach(w => {
+                        allWriteOffData.push([labName, w.code, w.name, w.reason, w.status, w.remarks || '']);
+                    });
+                });
+
+                if (allWriteOffData.length > 0) {
+                    let wSheetData = [
+                        ["ASSET WRITE OFF PROPOSALS SUMMARY"],
+                        [],
+                        ["Lab Location", "Asset Code", "Asset Name", "Disposal Reason", "Status", "Remarks"]
+                    ];
+                    allWriteOffData.forEach(row => wSheetData.push(row));
+                    let wWs = XLSX.utils.aoa_to_sheet(wSheetData);
+                    XLSX.utils.book_append_sheet(newWorkbook, wWs, "Asset Write Off");
+                }
+
+                XLSX.writeFile(newWorkbook, `Mechanical_Lab_Inventory_${new Date().toISOString().substring(0, 10)}.xlsx`);
+                addLog("Exported inventory to formatted Excel file (.xlsx)");
+                alert("Berjaya mengeksport fail Excel dengan format penuh dan auto-tab!");
+
+            } catch (err) {
+                console.error(err);
+                alert("Gagal mengeksport Excel: " + err.message);
+            }
         }
 
         /* --- FUNGSI PARSER CSV --- */
