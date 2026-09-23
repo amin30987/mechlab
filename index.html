@@ -9,69 +9,45 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MechLab">
-    
-    <!-- Pustaka SheetJS untuk Membaca & Menulis Fail Excel (.xlsx) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        body { background-color: #dbe3eb; color: #0a192d; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
         
-        html, body {
-            min-height: 100%;
-            background-color: #ebf0f5; 
-            color: #0a192d;
-        }
-
-        body { 
-            display: flex; 
-            flex-direction: column; 
-            min-height: 100vh;
-        }
-
-        /* Spanduk Install PWA Banner */
-        #pwa-install-banner {
-            background-color: #145b9d;
-            color: white;
-            padding: 10px 16px;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            font-size: 13px;
-            font-weight: bold;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
-            position: sticky;
-            top: 0;
-            z-index: 101;
-        }
-
-        /* Top Navigation Bar */
-        header { 
-            background-color: #071827; 
-            color: white; 
-            display: flex; 
-            align-items: center; 
-            justify-content: space-between; 
-            padding: 0 16px; 
-            height: 56px; 
-            flex-shrink: 0; 
+        /* App Window Frame (Pusat Skrin) */
+        .app-frame {
             width: 100%;
-            position: sticky;
-            top: 0;
-            z-index: 100;
+            max-width: 600px;
+            height: 100vh;
+            max-height: 900px;
+            background-color: #ebf0f5;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+            border-radius: 12px;
+            overflow: hidden;
+            position: relative;
         }
-        header h1 { font-size: 17px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .btn-back { background-color: #145b9d; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
-        /* Main Scrollable Content */
-        main { 
-            flex: 1; 
-            padding: 16px; 
-            width: 100%; 
-            padding-bottom: 76px;
+        @media (max-width: 600px) {
+            .app-frame {
+                max-width: 100%;
+                height: 100vh;
+                max-height: 100vh;
+                border-radius: 0;
+            }
         }
         
-        /* Cards Layout */
-        .card { background-color: white; border-radius: 8px; border: 1px solid #b4c3d2; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); width: 100%; }
+        /* Top Navigation Bar */
+        header { background-color: #071827; color: white; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; height: 56px; flex-shrink: 0; }
+        header h1 { font-size: 17px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .btn-back { background-color: #145b9d; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
+        .btn-back:hover { background-color: #0d4375; }
+
+        /* Main Scrollable Content Area */
+        main { flex: 1; overflow-y: auto; padding: 16px; }
+        
+        /* Cards & Layout */
+        .card { background-color: white; border-radius: 10px; border: 1px solid #c2d0dc; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
         .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .col { flex: 1; }
         
@@ -82,76 +58,64 @@
 
         /* Form Controls */
         label { font-size: 13px; font-weight: bold; color: #071827; display: block; margin: 10px 0 4px 0; }
-        input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background-color: white; }
+        input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 11px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 13px; background-color: #fdfdfd; transition: 0.2s; }
+        input[type="text"]:focus, select:focus, textarea:focus { border-color: #145b9d; outline: none; background-color: #fff; }
         textarea { resize: vertical; min-height: 70px; }
         
         /* Buttons */
-        .btn { width: 100%; padding: 13px; border: none; border-radius: 6px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; }
+        .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.1s, opacity 0.2s; }
+        .btn:active { transform: scale(0.98); }
         .btn-green { background-color: #249d6b; }
         .btn-blue { background-color: #145b9d; }
         .btn-orange { background-color: #ef8b24; }
         .btn-red { background-color: #cc4c45; }
         .btn-purple { background-color: #800080; }
         .btn-navy { background-color: #071827; }
-        .btn-inline { width: auto; padding: 8px 12px; margin-top: 0; font-size: 12px; }
+        .btn-inline { width: auto; padding: 9px 14px; margin-top: 0; }
 
         /* Bottom Tab Bar */
-        nav { 
-            background-color: #071827; 
-            display: flex; 
-            height: 56px; 
-            flex-shrink: 0; 
-            width: 100%; 
-            position: fixed;
-            bottom: 0;
-            left: 0;
-            z-index: 100;
-        }
-        .tab-btn { flex: 1; background: none; border: none; color: white; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .tab-btn.active { background-color: #145b9d; }
+        nav { background-color: #071827; display: flex; height: 56px; flex-shrink: 0; border-top: 1px solid #1a2f43; }
+        .tab-btn { flex: 1; background: none; border: none; color: #94a3b8; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
+        .tab-btn.active { background-color: #145b9d; color: white; }
 
         /* Item List Card */
-        .item-card { display: flex; align-items: center; background: white; border: 1.5px solid #b4c3d2; border-radius: 6px; padding: 12px; margin-bottom: 8px; gap: 10px; cursor: pointer; width: 100%; }
-        .item-card input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .item-card { display: flex; align-items: center; background: white; border: 1.5px solid #c2d0dc; border-radius: 8px; padding: 12px; margin-bottom: 10px; gap: 10px; cursor: pointer; transition: 0.2s; }
+        .item-card:hover { border-color: #145b9d; }
+        .item-card input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
         .item-info { flex: 1; }
-        .item-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; }
+        .item-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
         
-        .img-preview { width: 100%; max-height: 160px; object-fit: contain; margin-top: 8px; border-radius: 4px; background: #eee; display: none; }
+        /* Image Preview Area */
+        .img-preview { width: 100%; max-height: 160px; object-fit: contain; margin-top: 8px; border-radius: 6px; background: #eee; display: none; }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <!-- Spanduk PWA Installation -->
-    <div id="pwa-install-banner" class="hidden">
-        <span>📲 Install MechLab App?</span>
-        <div>
-            <button class="btn btn-green btn-inline" onclick="installPWA()">Install</button>
-            <button class="btn btn-red btn-inline" onclick="hideInstallBanner()">✕</button>
-        </div>
+    <div class="app-frame">
+        <!-- Header -->
+        <header>
+            <h1 id="header-title">Mechanical Lab</h1>
+            <button id="back-btn" class="btn-back hidden" onclick="goBack()">← BACK</button>
+        </header>
+
+        <!-- Main Content Area -->
+        <main id="app-content"></main>
+
+        <!-- Bottom Navigation Bar -->
+        <nav>
+            <button class="tab-btn active" onclick="switchScreen('HOME')">📋 List</button>
+            <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
+        </nav>
     </div>
 
-    <!-- Header -->
-    <header>
-        <h1 id="header-title">Mechanical Lab</h1>
-        <button id="back-btn" class="btn-back hidden" onclick="goBack()">← BACK</button>
-    </header>
-
-    <!-- Main Content Area -->
-    <main id="app-content"></main>
-
-    <!-- Bottom Navigation Bar -->
-    <nav>
-        <button class="tab-btn active" onclick="switchScreen('HOME')">📊 Dashboard</button>
-        <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
-    </nav>
-
-    <!-- Hidden Inputs -->
-    <input type="file" id="file-input-excel" accept=".xlsx, .xls" class="hidden" onchange="handleExcelFileSelected(event)">
+    <!-- Hidden Inputs for CSV/Image Handling -->
+    <input type="file" id="file-input-csv" accept=".csv" class="hidden" onchange="handleCSVFileSelected(event)">
     <input type="file" id="file-input-img" accept="image/*" class="hidden" onchange="handleImageFileSelected(event)">
     <input type="file" id="camera-input-img" accept="image/*" capture="environment" class="hidden" onchange="handleImageFileSelected(event)">
 
     <script>
+        // --- APP STATE & STORAGE ---
         let state = {
             currentScreen: 'HOME',
             currentLab: '',
@@ -159,29 +123,22 @@
             selectedIds: new Set(),
             editingId: null,
             tempImgUri: null,
+            isOverwriteMode: false,
             screenStack: ['HOME']
         };
 
-        let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {};
-        let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
-        let rawWorkbookBinary = localStorage.getItem('rawWorkbookBinary') || null;
-        let originalFileName = localStorage.getItem('originalFileName') || "FOET_Mechanical_Engineering_Department_Asset_2024.xlsx";
+        let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {
+            'Lab 1 (Mechanical)': { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] },
+            'Lab 2 (Automotive)': { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] }
+        };
 
-        let labKeys = Object.keys(labProfiles);
-        state.currentLab = localStorage.getItem('currentLab') || (labKeys.length > 0 ? labKeys[0] : '');
+        let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
+        state.currentLab = localStorage.getItem('currentLab') || Object.keys(labProfiles)[0] || 'Lab 1 (Mechanical)';
 
         function saveData() {
             localStorage.setItem('labProfiles', JSON.stringify(labProfiles));
             localStorage.setItem('activityLogs', JSON.stringify(activityLogs));
             localStorage.setItem('currentLab', state.currentLab);
-            localStorage.setItem('originalFileName', originalFileName);
-            if (rawWorkbookBinary) {
-                try {
-                    localStorage.setItem('rawWorkbookBinary', rawWorkbookBinary);
-                } catch(e) {
-                    console.warn("Storage quota exceeded.");
-                }
-            }
         }
 
         function addLog(action) {
@@ -190,6 +147,7 @@
             saveData();
         }
 
+        // --- NAVIGATION CONTROLLER ---
         function switchScreen(screen, editingId = null) {
             state.currentScreen = screen;
             state.editingId = editingId;
@@ -200,7 +158,6 @@
                 state.screenStack.push(screen);
             }
             render();
-            window.scrollTo(0, 0);
         }
 
         function goBack() {
@@ -210,15 +167,16 @@
                 state.selectedIds.clear();
                 state.searchQuery = '';
                 render();
-                window.scrollTo(0, 0);
             }
         }
 
+        // --- RENDER ENGINE ---
         function render() {
             let content = document.getElementById('app-content');
             let backBtn = document.getElementById('back-btn');
             let headerTitle = document.getElementById('header-title');
 
+            // Header Title Setup
             headerTitle.innerText = state.currentLab ? `${getScreenTitle(state.currentScreen)} · ${state.currentLab}` : getScreenTitle(state.currentScreen);
             
             if (state.screenStack.length > 1) {
@@ -261,12 +219,10 @@
             }
         }
 
-        function renderHome(container) {
-            let labs = Object.keys(labProfiles);
-            let optionsHTML = labs.length > 0 
-                ? labs.map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('')
-                : `<option value="">-- No Lab Created Yet --</option>`;
+        // --- SCREEN RENDERING IMPLEMENTATIONS ---
 
+        // 1. HOME SCREEN
+        function renderHome(container) {
             let html = `
                 <div class="text-center" style="margin-bottom: 16px;">
                     <h2 style="font-size: 22px; color:#071827;">WELCOME</h2>
@@ -277,35 +233,27 @@
                     <label style="margin-top:0;">📍 Active Lab Location:</label>
                     <div class="row">
                         <select id="lab-select" onchange="onLabSwitched(this.value)" class="col">
-                            ${optionsHTML}
+                            ${Object.keys(labProfiles).map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('')}
                         </select>
                         <button class="btn btn-green btn-inline" onclick="addLabPrompt()">＋ Add</button>
-                        ${state.currentLab ? `<button class="btn btn-red btn-inline" onclick="deleteLabPrompt()">🗑</button>` : ''}
+                        <button class="btn btn-red btn-inline" onclick="deleteLabPrompt()">🗑</button>
                     </div>
                 </div>
 
                 <div>
-                    <button class="btn btn-green" onclick="checkLabAndNavigate('EQUIPMENT_LIST')">⚙ Equipment List<br><span style="font-size:11px;font-weight:normal;">Lab equipment & apparatus</span></button>
-                    <button class="btn btn-purple" onclick="checkLabAndNavigate('TEACHING_LIST')">📚 Teaching Materials<br><span style="font-size:11px;font-weight:normal;">Teaching materials to order</span></button>
-                    <button class="btn btn-orange" onclick="checkLabAndNavigate('FAULTY_LIST')">🔧 Faulty / Repair<br><span style="font-size:11px;font-weight:normal;">Report & track issues</span></button>
-                    <button class="btn btn-red" onclick="checkLabAndNavigate('WRITEOFF_LIST')">🗑 Asset to Write Off<br><span style="font-size:11px;font-weight:normal;">List & disposal status</span></button>
+                    <button class="btn btn-green" onclick="switchScreen('EQUIPMENT_LIST')">⚙ Equipment List<br><span style="font-size:11px;font-weight:normal;">Lab equipment & apparatus</span></button>
+                    <button class="btn btn-purple" onclick="switchScreen('TEACHING_LIST')">📚 Teaching Materials<br><span style="font-size:11px;font-weight:normal;">Teaching materials to order</span></button>
+                    <button class="btn btn-orange" onclick="switchScreen('FAULTY_LIST')">🔧 Faulty / Repair<br><span style="font-size:11px;font-weight:normal;">Report & track issues</span></button>
+                    <button class="btn btn-red" onclick="switchScreen('WRITEOFF_LIST')">🗑 Asset to Write Off<br><span style="font-size:11px;font-weight:normal;">List & disposal status</span></button>
                 </div>
             `;
             container.innerHTML = html;
         }
 
-        function checkLabAndNavigate(screen) {
-            if (!state.currentLab) {
-                alert("Sila tambah atau pilih 'Lab Location' terlebih dahulu!");
-                return;
-            }
-            switchScreen(screen);
-        }
-
         function onLabSwitched(newLab) {
             state.currentLab = newLab;
             saveData();
-            if (newLab) addLog(`Switched active lab location to: ${newLab}`);
+            addLog(`Switched active lab location to: ${newLab}`);
             render();
         }
 
@@ -326,18 +274,17 @@
         }
 
         function deleteLabPrompt() {
-            if (!state.currentLab) return;
             if (confirm(`Are you sure you want to delete lab location '${state.currentLab}'?\nAll records inside will be permanently removed!`)) {
                 delete labProfiles[state.currentLab];
                 addLog(`Deleted lab profile: ${state.currentLab}`);
-                let keys = Object.keys(labProfiles);
-                state.currentLab = keys.length > 0 ? keys[0] : '';
+                state.currentLab = Object.keys(labProfiles)[0] || '';
                 saveData();
                 render();
             }
         }
 
-        function renderSearchBar(container, placeholder) {
+        // SEARCH BAR HELPER
+        function renderSearchBar(container, placeholder, onSearch) {
             let searchDiv = document.createElement('div');
             searchDiv.innerHTML = `<input type="text" placeholder="🔍 ${placeholder}" value="${state.searchQuery}" oninput="onSearchInput(this.value)">`;
             container.appendChild(searchDiv);
@@ -354,7 +301,8 @@
             return text.toLowerCase().includes(query.toLowerCase());
         }
 
-        function renderSelectionBar(container, totalCount) {
+        // SELECTION BAR HELPER
+        function renderSelectionBar(container, totalCount, onDeleteSelected) {
             let isAllSelected = totalCount > 0 && state.selectedIds.size === totalCount;
             let bar = document.createElement('div');
             bar.className = 'row card';
@@ -407,8 +355,9 @@
             return [];
         }
 
+        // 2. EQUIPMENT LIST & EDIT
         function renderEquipmentList(container) {
-            renderSearchBar(container, "Search Equipment Name...");
+            renderSearchBar(container, "Search Equipment Name...", val => {});
             let items = getFilteredCurrentItems();
             renderSelectionBar(container, items.length);
 
@@ -419,7 +368,7 @@
                 card.innerHTML = `
                     <input type="checkbox" ${state.selectedIds.has(item.code) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.code}')">
                     <div class="item-info">
-                        <h2>${item.name}</h2>
+                        <h2>${item.code} · ${item.name}</h2>
                     </div>
                     ${item.imageUri ? `<img src="${item.imageUri}" class="item-thumb">` : ''}
                 `;
@@ -440,10 +389,6 @@
             let item = activeLab ? activeLab.equipmentList.find(i => i.code === state.editingId) : null;
             state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
 
-            let labsOptions = Object.keys(labProfiles).map(l => 
-                `<option value="${l}" ${l === state.currentLab ? 'selected' : ''}>${l}</option>`
-            ).join('');
-
             container.innerHTML = `
                 ${renderImageEditorHTML()}
                 <label>📦 Stock List Number / Equipment Code:</label>
@@ -451,11 +396,6 @@
                 
                 <label>⚙ Equipment Name:</label>
                 <input type="text" id="eq-name" placeholder="e.g. Governors Apparatus" value="${item ? item.name : ''}">
-
-                <label>📍 Location / Room (Transfer Equipment):</label>
-                <select id="eq-lab-target">
-                    ${labsOptions}
-                </select>
 
                 <button class="btn btn-green" onclick="saveEquipment()">💾 Save Equipment</button>
                 ${item ? `<button class="btn btn-red" onclick="deleteSingleItem('equipmentList', '${item.code}')">❌ Delete Equipment</button>` : ''}
@@ -466,40 +406,24 @@
         function saveEquipment() {
             let code = document.getElementById('eq-code').value.trim();
             let name = document.getElementById('eq-name').value.trim();
-            let targetLab = document.getElementById('eq-lab-target').value;
             if (!code || !name) { alert("Enter Stock Code and Equipment Name!"); return; }
 
-            let currentProfile = labProfiles[state.currentLab];
-            let targetProfile = labProfiles[targetLab];
-
+            let activeLab = labProfiles[state.currentLab];
             if (state.editingId) {
-                if (targetLab !== state.currentLab) {
-                    let existingItem = currentProfile.equipmentList.find(i => i.code === state.editingId);
-                    currentProfile.equipmentList = currentProfile.equipmentList.filter(i => i.code !== state.editingId);
-                    
-                    targetProfile.equipmentList.push({ 
-                        code, 
-                        name, 
-                        imageUri: state.tempImgUri,
-                        extraCells: existingItem ? existingItem.extraCells : {}
-                    });
-                    addLog(`Transferred Equipment ${code} from ${state.currentLab} to ${targetLab}`);
-                } else {
-                    let item = currentProfile.equipmentList.find(i => i.code === state.editingId);
-                    if (item) { item.code = code; item.name = name; item.imageUri = state.tempImgUri; }
-                    addLog(`Updated Equipment: ${code} in ${state.currentLab}`);
-                }
+                let item = activeLab.equipmentList.find(i => i.code === state.editingId);
+                if (item) { item.code = code; item.name = name; item.imageUri = state.tempImgUri; }
+                addLog(`Updated Equipment: ${code} in ${state.currentLab}`);
             } else {
-                targetProfile.equipmentList.push({ code, name, imageUri: state.tempImgUri, extraCells: {} });
-                addLog(`Added Equipment: ${code} (${name}) in ${targetLab}`);
+                activeLab.equipmentList.push({ code, name, imageUri: state.tempImgUri });
+                addLog(`Added Equipment: ${code} (${name}) in ${state.currentLab}`);
             }
-
             saveData();
             goBack();
         }
 
+        // 3. TEACHING MATERIALS LIST & EDIT
         function renderTeachingList(container) {
-            renderSearchBar(container, "Search Teaching Material Name...");
+            renderSearchBar(container, "Search Teaching Material Name...", val => {});
             let items = getFilteredCurrentItems();
             renderSelectionBar(container, items.length);
 
@@ -568,8 +492,9 @@
             goBack();
         }
 
+        // 4. FAULTY REPORT LIST & EDIT
         function renderFaultyList(container) {
-            renderSearchBar(container, "Search Faulty Asset Name...");
+            renderSearchBar(container, "Search Faulty Asset Name...", val => {});
             let items = getFilteredCurrentItems();
             renderSelectionBar(container, items.length);
 
@@ -654,8 +579,9 @@
             goBack();
         }
 
+        // 5. WRITE OFF LIST & EDIT
         function renderWriteOffList(container) {
-            renderSearchBar(container, "Search Write Off Asset Name...");
+            renderSearchBar(container, "Search Write Off Asset Name...", val => {});
             let items = getFilteredCurrentItems();
             renderSelectionBar(container, items.length);
 
@@ -666,7 +592,7 @@
                 card.innerHTML = `
                     <input type="checkbox" ${state.selectedIds.has(item.code) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.code}')">
                     <div class="item-info">
-                        <h2>${item.name}</h2>
+                        <h2>${item.code} · ${item.name}</h2>
                         <p>Reason: ${item.reason} • <b>${item.status}</b></p>
                     </div>
                 `;
@@ -735,6 +661,7 @@
             goBack();
         }
 
+        // IMAGE HANDLING HELPERS
         function renderImageEditorHTML() {
             return `
                 <div class="card text-center">
@@ -795,18 +722,20 @@
             }
         }
 
+        // 6. MORE & LOGS SCREEN
         function renderMore(container) {
             container.innerHTML = `
                 <div class="card">
                     <h2>App Information</h2>
-                    <p>Version: v5.0.0 (Perfect In-Place Cell Mutation)</p>
+                    <p>Version: v1.2.0 (PWA Web Edition)</p>
                     <button class="btn btn-purple" onclick="switchScreen('LOGS')">📜 View Activity Logs</button>
                 </div>
 
                 <div class="card">
-                    <h2>Excel File Options</h2>
-                    <button class="btn btn-green" onclick="triggerExcelImport()">📂 Import Original Excel File (.xlsx)</button>
-                    <button class="btn btn-purple" onclick="exportFormattedExcel()">💾 Save & Download Exact Excel (.xlsx)</button>
+                    <h2>Data Import & Export</h2>
+                    <button class="btn btn-blue" onclick="triggerCSVImport(false)">📂 Import CSV File (Append Data)</button>
+                    <button class="btn btn-green" onclick="exportCSV()">📊 Export Data to CSV File</button>
+                    <button class="btn btn-red" onclick="triggerCSVImport(true)">⚠️ Overwrite & Replace Data from CSV</button>
                 </div>
             `;
         }
@@ -823,205 +752,150 @@
             container.innerHTML = html;
         }
 
-        /* --- FUNGSI READ EXCEL --- */
-        function triggerExcelImport() {
-            document.getElementById('file-input-excel').click();
+        // --- CSV IMPORT & EXPORT LOGIC ---
+        function triggerCSVImport(isOverwrite) {
+            state.isOverwriteMode = isOverwrite;
+            if (isOverwrite) {
+                if (!confirm(`⚠️ Warning: Are you sure you want to OVERWRITE all data for '${state.currentLab}'? This cannot be undone!`)) return;
+            }
+            document.getElementById('file-input-csv').click();
         }
 
-        function handleExcelFileSelected(e) {
+        function handleCSVFileSelected(e) {
             let file = e.target.files[0];
             if (!file) return;
 
-            originalFileName = file.name;
-
             let reader = new FileReader();
-            reader.onload = function(evt) {
-                try {
-                    let arrayBuffer = evt.target.result;
-                    
-                    let binary = "";
-                    let bytes = new Uint8Array(arrayBuffer);
-                    for (let i = 0; i < bytes.byteLength; i++) {
-                        binary += String.fromCharCode(bytes[i]);
-                    }
-                    originalWorkbookBinary = btoa(binary);
-
-                    let workbook = XLSX.read(arrayBuffer, { type: 'array', cellStyles: true, cellFormulas: true, cellDates: true, cellNF: true });
-                    
-                    let totalImported = 0;
-                    let sheetsParsed = 0;
-
-                    workbook.SheetNames.forEach(sheetName => {
-                        let trimmedName = sheetName.trim();
-                        let worksheet = workbook.Sheets[sheetName];
-
-                        if (!labProfiles[trimmedName]) {
-                            labProfiles[trimmedName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-                        }
-                        let profile = labProfiles[trimmedName];
-                        profile.equipmentList = []; // Reset untukelakkan duplikasi
-
-                        let startRow = 11; // Baris 12 (0-indexed R=11)
-
-                        for (let R = startRow; R < 200; ++R) {
-                            let descRef = XLSX.utils.encode_cell({c: 3, r: R});  // Lajur D
-                            let codeRef = XLSX.utils.encode_cell({c: 19, r: R}); // Lajur T
-
-                            let descCell = worksheet[descRef];
-                            let codeCell = worksheet[codeRef];
-
-                            let rawName = descCell ? String(descCell.v || '').trim().replace(/\r?\n|\r/g, " ") : '';
-                            let rawCode = codeCell ? String(codeCell.v || '').trim() : '';
-
-                            if (rawName && rawName.includes("Prepared by:")) break;
-
-                            if (rawName && rawCode && !rawCode.startsWith("(")) {
-                                let extra = {};
-                                // Simpan data asal lajur E sehingga S dan U hingga W
-                                for (let C = 0; C < 24; ++C) {
-                                    let cRef = XLSX.utils.encode_cell({c: C, r: R});
-                                    if (worksheet[cRef]) {
-                                        extra[C] = worksheet[cRef];
-                                    }
-                                }
-
-                                profile.equipmentList.push({ 
-                                    code: rawCode, 
-                                    name: rawName, 
-                                    imageUri: null,
-                                    extraCells: extra
-                                });
-                                totalImported++;
-                            }
-                        }
-                        sheetsParsed++;
-                    });
-
-                    let keys = Object.keys(labProfiles);
-                    if (keys.length > 0 && (!state.currentLab || !labProfiles[state.currentLab])) {
-                        state.currentLab = keys[0];
-                    }
-
-                    saveData();
-                    addLog(`Imported ${totalImported} items from original Excel file`);
-                    alert(`Berjaya membaca ${totalImported} peralatan daripada fail Excel asal!`);
-                    switchScreen('HOME');
-
-                } catch (err) {
-                    console.error(err);
-                    alert("Gagal membaca fail Excel: " + err.message);
-                }
+            reader.onload = (event) => {
+                parseAndImportCSV(event.target.result);
             };
-            reader.readAsArrayBuffer(file);
+            reader.readAsText(file);
         }
 
-        /* --- FUNGSI SAVE EXCEL TERUS (DIRECT CELL EDIT & AUTO SHIFT UP) --- */
-        function exportFormattedExcel() {
-            try {
-                if (!originalWorkbookBinary) {
-                    alert("Sila muat naik fail Excel asal (.xlsx) terlebih dahulu!");
-                    return;
+        function parseAndImportCSV(text) {
+            let lines = text.split('\n');
+            let fileLab = '';
+            let currentSection = '';
+            let count = 0;
+
+            lines.forEach(line => {
+                let l = line.trim();
+                if (l.startsWith('Lab Location,')) {
+                    let parts = l.split(',');
+                    if (parts.length > 1) fileLab = parts[1].replace(/"/g, '').trim();
                 }
+            });
 
-                let binaryStr = atob(originalWorkbookBinary);
-                let bytes = new Uint8Array(binaryStr.length);
-                for (let i = 0; i < binaryStr.length; i++) {
-                    bytes[i] = binaryStr.charCodeAt(i);
-                }
+            if (fileLab) state.currentLab = fileLab;
+            if (!labProfiles[state.currentLab]) labProfiles[state.currentLab] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
 
-                let workbook = XLSX.read(bytes.buffer, { type: 'array', cellStyles: true, cellFormulas: true, cellDates: true, cellNF: true });
+            let activeLab = labProfiles[state.currentLab];
 
-                Object.keys(labProfiles).forEach(labName => {
-                    let profile = labProfiles[labName];
-                    let worksheet = workbook.Sheets[labName];
-
-                    if (!worksheet) return;
-
-                    let startRow = 11; // Baris 12 (0-indexed R=11)
-                    let footerStartR = -1;
-
-                    // 1. Cari di mana terletaknya blok footer (Prepared by:)
-                    for (let R = startRow; R < 200; ++R) {
-                        let descRef = XLSX.utils.encode_cell({c: 3, r: R});
-                        if (worksheet[descRef] && String(worksheet[descRef].v).includes("Prepared by:")) {
-                            footerStartR = R;
-                            break;
-                        }
-                    }
-
-                    // 2. Kosongkan semua baris data lama dari startRow hingga sebelum footerStartR
-                    let clearEndR = footerStartR !== -1 ? footerStartR : 150;
-                    for (let R = startRow; R < clearEndR; ++R) {
-                        for (let C = 0; C < 24; ++C) {
-                            let cellRef = XLSX.utils.encode_cell({c: C, r: R});
-                            delete worksheet[cellRef];
-                        }
-                    }
-
-                    // 3. Tulis semula senarai peralatan semasa satu per satu (Auto Shift Up)
-                    profile.equipmentList.forEach((item, index) => {
-                        let targetRow = startRow + index;
-
-                        // Pulihkan data lajur asal jika wujud
-                        if (item.extraCells) {
-                            Object.keys(item.extraCells).forEach(cIdx => {
-                                let cRef = XLSX.utils.encode_cell({c: parseInt(cIdx), r: targetRow});
-                                worksheet[cRef] = Object.assign({}, item.extraCells[cIdx]);
-                            });
-                        }
-
-                        let noRef = XLSX.utils.encode_cell({c: 2, r: targetRow});   // Col C
-                        let descRef = XLSX.utils.encode_cell({c: 3, r: targetRow});  // Col D
-                        let codeRef = XLSX.utils.encode_cell({c: 19, r: targetRow}); // Col T
-                        let locRef = XLSX.utils.encode_cell({c: 20, r: targetRow});  // Col U
-
-                        worksheet[noRef] = { t: 'n', v: index + 1 };
-                        worksheet[descRef] = { t: 's', v: item.name };
-                        worksheet[codeRef] = { t: 's', v: item.code };
-                        worksheet[locRef] = { t: 's', v: labName };
-                    });
-                });
-
-                // Simpan fail Excel
-                XLSX.writeFile(workbook, originalFileName);
-                addLog("Saved inventory directly into original binary Excel template");
-                alert("Fail Excel berjaya disimpan! Baris kosong dipadamkan secara automatik dan susunan asal dipelihara 100%.");
-
-            } catch (err) {
-                console.error(err);
-                alert("Gagal menyimpan fail Excel: " + err.message);
+            if (state.isOverwriteMode) {
+                activeLab.equipmentList = [];
+                activeLab.teachingList = [];
+                activeLab.faultyList = [];
+                activeLab.writeOffList = [];
             }
+
+            lines.forEach(line => {
+                let l = line.trim();
+                if (!l) return;
+
+                if (l.includes('SECTION 1: EQUIPMENT LIST')) { currentSection = 'EQUIPMENT'; return; }
+                if (l.includes('SECTION 2: TEACHING MATERIALS ORDER')) { currentSection = 'TEACHING'; return; }
+                if (l.includes('SECTION 3: FAULTY / REPAIR REPORTS')) { currentSection = 'FAULTY'; return; }
+                if (l.includes('SECTION 4: ASSET WRITE OFF PROPOSALS')) { currentSection = 'WRITEOFF'; return; }
+
+                if (l.startsWith('No.,') || l.startsWith('Equipment Code,') || l.startsWith('Report ID,') || l.startsWith('Asset Code,')) return;
+
+                let tokens = parseCSVLine(l);
+                if (tokens.length < 2) return;
+
+                if (currentSection === 'EQUIPMENT') {
+                    let code = tokens[1] || tokens[0];
+                    let name = tokens[2] || tokens[1];
+                    if (code && name && !code.includes('No Equipment')) {
+                        if (!activeLab.equipmentList.some(i => i.code === code)) {
+                            activeLab.equipmentList.push({ code, name, imageUri: null });
+                            count++;
+                        }
+                    }
+                } else if (currentSection === 'TEACHING') {
+                    let name = tokens[1] || tokens[0];
+                    let qty = tokens[2] || tokens[1];
+                    let remarks = tokens[3] || '';
+                    if (name && !name.includes('No Teaching')) {
+                        activeLab.teachingList.push({ id: 'TM-' + Date.now() + '-' + count, name, qtyUnit: qty, remarks, imageUri: null });
+                        count++;
+                    }
+                } else if (currentSection === 'FAULTY') {
+                    if (tokens.length >= 4 && !tokens[0].includes('No Faulty')) {
+                        activeLab.faultyList.push({
+                            id: tokens[0], stockCode: tokens[1] || '', name: tokens[2] || tokens[1],
+                            problem: tokens[3] || tokens[2], date: tokens[4] || tokens[3],
+                            status: tokens[5] || 'Pending Repair', remarks: tokens[6] || '', imageUri: null
+                        });
+                        count++;
+                    }
+                } else if (currentSection === 'WRITEOFF') {
+                    if (tokens.length >= 3 && !tokens[0].includes('No Asset Write')) {
+                        activeLab.writeOffList.push({
+                            code: tokens[0], name: tokens[1], reason: tokens[2],
+                            status: tokens[3] || 'Pending', remarks: tokens[4] || '', imageUri: null
+                        });
+                        count++;
+                    }
+                }
+            });
+
+            saveData();
+            addLog(`${state.isOverwriteMode ? 'Overwritten' : 'Imported'} ${count} record(s) into ${state.currentLab}`);
+            alert(`Successfully imported ${count} record(s) into ${state.currentLab}!`);
+            switchScreen('HOME');
         }
 
+        function parseCSVLine(line) {
+            let result = [], inQuotes = false, sb = '';
+            for (let i = 0; i < line.length; i++) {
+                let c = line.charAt(i);
+                if (c === '"') inQuotes = !inQuotes;
+                else if (c === ',' && !inQuotes) { result.push(sb.trim()); sb = ''; }
+                else sb += c;
+            }
+            result.push(sb.trim());
+            return result.map(s => s.replace(/^"|"$/g, '').replace(/""/g, '"'));
+        }
+
+        function exportCSV() {
+            let activeLab = labProfiles[state.currentLab];
+            if (!activeLab) return;
+
+            let csv = `Lab Location,"${state.currentLab}"\nGenerated Date,"${new Date().toISOString()}"\n\n`;
+
+            csv += `---------------------------------------------------------------------------------\nSECTION 1: EQUIPMENT LIST\n---------------------------------------------------------------------------------\nNo.,Equipment Code,Equipment Name\n`;
+            activeLab.equipmentList.forEach((e, idx) => { csv += `${idx+1},"${e.code}","${e.name}"\n`; });
+
+            csv += `\n---------------------------------------------------------------------------------\nSECTION 2: TEACHING MATERIALS ORDER\n---------------------------------------------------------------------------------\nNo.,Item Name,Quantity Unit,Remarks\n`;
+            activeLab.teachingList.forEach((t, idx) => { csv += `${idx+1},"${t.name}","${t.qtyUnit}","${t.remarks||''}"\n`; });
+
+            csv += `\n---------------------------------------------------------------------------------\nSECTION 3: FAULTY / REPAIR REPORTS\n---------------------------------------------------------------------------------\nReport ID,Stock Code,Asset Name,Problem Description,Reported Date,Status,Remarks\n`;
+            activeLab.faultyList.forEach(f => { csv += `"${f.id}","${f.stockCode||''}","${f.name}","${f.problem}","${f.date}","${f.status}","${f.remarks||''}"\n`; });
+
+            csv += `\n---------------------------------------------------------------------------------\nSECTION 4: ASSET WRITE OFF PROPOSALS\n---------------------------------------------------------------------------------\nAsset Code,Asset Name,Disposal Reason,Status,Remarks\n`;
+            activeLab.writeOffList.forEach(w => { csv += `"${w.code}","${w.name}","${w.reason}","${w.status}","${w.remarks||''}"\n`; });
+
+            let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            let link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = `LabReport_${state.currentLab.replace(/\s+/g, '_')}.csv`;
+            link.click();
+        }
+
+        // INITIAL STARTUP
         render();
 
-        /* --- PWA INSTALLATION EVENT LOGIC --- */
-        let deferredPrompt;
-        window.addEventListener('beforeinstallprompt', (e) => {
-            e.preventDefault();
-            deferredPrompt = e;
-            let banner = document.getElementById('pwa-install-banner');
-            if (banner) banner.classList.remove('hidden');
-        });
-
-        function installPWA() {
-            if (deferredPrompt) {
-                deferredPrompt.prompt();
-                deferredPrompt.userChoice.then((choiceResult) => {
-                    if (choiceResult.outcome === 'accepted') {
-                        console.log('User accepted PWA install');
-                    }
-                    deferredPrompt = null;
-                    hideInstallBanner();
-                });
-            }
-        }
-
-        function hideInstallBanner() {
-            let banner = document.getElementById('pwa-install-banner');
-            if (banner) banner.classList.add('hidden');
-        }
-
+        // Register Service Worker for Offline PWA Support
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
         }
