@@ -12,57 +12,62 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         
-        body { 
+        /* Membolehkan skrol semula jadi di telefon bimbit */
+        html, body {
+            min-height: 100%;
             background-color: #ebf0f5; 
-            color: #0a192d; 
-            display: flex; 
-            flex-direction: column; 
-            height: 100vh; 
-            width: 100vw;
-            overflow: hidden; 
+            color: #0a192d;
         }
 
-        /* Top Navigation Bar - Memenuhi seluruh lebar skrin */
+        body { 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh;
+        }
+
+        /* Top Navigation Bar - Ditetapkan di atas */
         header { 
             background-color: #071827; 
             color: white; 
             display: flex; 
             align-items: center; 
             justify-content: space-between; 
-            padding: 0 20px; 
+            padding: 0 16px; 
             height: 56px; 
             flex-shrink: 0; 
             width: 100%;
+            position: sticky;
+            top: 0;
+            z-index: 100;
         }
-        header h1 { font-size: 18px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        header h1 { font-size: 17px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-back { background-color: #145b9d; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
-        /* Main Scrollable Content Area - Tersebar rata & sekata */
+        /* Ruang Kandungan Utama - Boleh diskrol dengan lancar */
         main { 
             flex: 1; 
-            overflow-y: auto; 
-            padding: 20px; 
+            padding: 16px; 
             width: 100%; 
-            box-sizing: border-box;
+            padding-bottom: 76px; /* Ruang supaya tidak bertindih dengan nav bawah */
         }
         
-        /* Cards & Layout */
-        .card { background-color: white; border-radius: 8px; border: 1px solid #b4c3d2; padding: 18px; margin-bottom: 14px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); width: 100%; }
-        .row { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        /* Kad Layout */
+        .card { background-color: white; border-radius: 8px; border: 1px solid #b4c3d2; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); width: 100%; }
+        .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .col { flex: 1; }
         
-        /* Typography */
+        /* Tipografi */
         h2 { font-size: 16px; font-weight: bold; color: #071827; margin-bottom: 6px; }
         p { font-size: 13px; color: #465564; }
         .text-center { text-align: center; }
 
-        /* Form Controls */
+        /* Kawalan Borang */
         label { font-size: 13px; font-weight: bold; color: #071827; display: block; margin: 10px 0 4px 0; }
         input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background-color: white; }
         textarea { resize: vertical; min-height: 70px; }
         
-        /* Buttons */
-        .btn { width: 100%; padding: 14px; border: none; border-radius: 6px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; }
+        /* Butang */
+        .btn { width: 100%; padding: 13px; border: none; border-radius: 6px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; }
         .btn-green { background-color: #249d6b; }
         .btn-blue { background-color: #145b9d; }
         .btn-orange { background-color: #ef8b24; }
@@ -71,12 +76,22 @@
         .btn-navy { background-color: #071827; }
         .btn-inline { width: auto; padding: 9px 14px; margin-top: 0; }
 
-        /* Bottom Tab Bar - Memenuhi seluruh lebar skrin */
-        nav { background-color: #071827; display: flex; height: 56px; flex-shrink: 0; width: 100%; }
+        /* Bottom Tab Bar - Ditetapkan di bawah skrin */
+        nav { 
+            background-color: #071827; 
+            display: flex; 
+            height: 56px; 
+            flex-shrink: 0; 
+            width: 100%; 
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+        }
         .tab-btn { flex: 1; background: none; border: none; color: white; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .tab-btn.active { background-color: #145b9d; }
 
-        /* Item List Card */
+        /* Senarai Item */
         .item-card { display: flex; align-items: center; background: white; border: 1.5px solid #b4c3d2; border-radius: 6px; padding: 12px; margin-bottom: 8px; gap: 10px; cursor: pointer; width: 100%; }
         .item-card input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
         .item-info { flex: 1; }
@@ -103,7 +118,7 @@
         <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
     </nav>
 
-    <!-- Hidden Inputs for CSV/Image Handling -->
+    <!-- Hidden Inputs -->
     <input type="file" id="file-input-csv" accept=".csv" class="hidden" onchange="handleCSVFileSelected(event)">
     <input type="file" id="file-input-img" accept="image/*" class="hidden" onchange="handleImageFileSelected(event)">
     <input type="file" id="camera-input-img" accept="image/*" capture="environment" class="hidden" onchange="handleImageFileSelected(event)">
@@ -120,13 +135,12 @@
             screenStack: ['HOME']
         };
 
-        let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {
-            'Lab 1 (Mechanical)': { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] },
-            'Lab 2 (Automotive)': { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] }
-        };
-
+        // Tiada lagi lab1 / lab2 secara default
+        let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {};
         let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
-        state.currentLab = localStorage.getItem('currentLab') || Object.keys(labProfiles)[0] || 'Lab 1 (Mechanical)';
+        
+        let labKeys = Object.keys(labProfiles);
+        state.currentLab = localStorage.getItem('currentLab') || (labKeys.length > 0 ? labKeys[0] : '');
 
         function saveData() {
             localStorage.setItem('labProfiles', JSON.stringify(labProfiles));
@@ -150,6 +164,7 @@
                 state.screenStack.push(screen);
             }
             render();
+            window.scrollTo(0, 0); // Atur skrol balik ke atas apabila bertukar skrin
         }
 
         function goBack() {
@@ -159,6 +174,7 @@
                 state.selectedIds.clear();
                 state.searchQuery = '';
                 render();
+                window.scrollTo(0, 0);
             }
         }
 
@@ -210,6 +226,11 @@
         }
 
         function renderHome(container) {
+            let labs = Object.keys(labProfiles);
+            let optionsHTML = labs.length > 0 
+                ? labs.map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('')
+                : `<option value="">-- No Lab Created Yet --</option>`;
+
             let html = `
                 <div class="text-center" style="margin-bottom: 16px;">
                     <h2 style="font-size: 22px; color:#071827;">WELCOME</h2>
@@ -220,27 +241,35 @@
                     <label style="margin-top:0;">📍 Active Lab Location:</label>
                     <div class="row">
                         <select id="lab-select" onchange="onLabSwitched(this.value)" class="col">
-                            ${Object.keys(labProfiles).map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('')}
+                            ${optionsHTML}
                         </select>
                         <button class="btn btn-green btn-inline" onclick="addLabPrompt()">＋ Add</button>
-                        <button class="btn btn-red btn-inline" onclick="deleteLabPrompt()">🗑</button>
+                        ${state.currentLab ? `<button class="btn btn-red btn-inline" onclick="deleteLabPrompt()">🗑</button>` : ''}
                     </div>
                 </div>
 
                 <div>
-                    <button class="btn btn-green" onclick="switchScreen('EQUIPMENT_LIST')">⚙ Equipment List<br><span style="font-size:11px;font-weight:normal;">Lab equipment & apparatus</span></button>
-                    <button class="btn btn-purple" onclick="switchScreen('TEACHING_LIST')">📚 Teaching Materials<br><span style="font-size:11px;font-weight:normal;">Teaching materials to order</span></button>
-                    <button class="btn btn-orange" onclick="switchScreen('FAULTY_LIST')">🔧 Faulty / Repair<br><span style="font-size:11px;font-weight:normal;">Report & track issues</span></button>
-                    <button class="btn btn-red" onclick="switchScreen('WRITEOFF_LIST')">🗑 Asset to Write Off<br><span style="font-size:11px;font-weight:normal;">List & disposal status</span></button>
+                    <button class="btn btn-green" onclick="checkLabAndNavigate('EQUIPMENT_LIST')">⚙ Equipment List<br><span style="font-size:11px;font-weight:normal;">Lab equipment & apparatus</span></button>
+                    <button class="btn btn-purple" onclick="checkLabAndNavigate('TEACHING_LIST')">📚 Teaching Materials<br><span style="font-size:11px;font-weight:normal;">Teaching materials to order</span></button>
+                    <button class="btn btn-orange" onclick="checkLabAndNavigate('FAULTY_LIST')">🔧 Faulty / Repair<br><span style="font-size:11px;font-weight:normal;">Report & track issues</span></button>
+                    <button class="btn btn-red" onclick="checkLabAndNavigate('WRITEOFF_LIST')">🗑 Asset to Write Off<br><span style="font-size:11px;font-weight:normal;">List & disposal status</span></button>
                 </div>
             `;
             container.innerHTML = html;
         }
 
+        function checkLabAndNavigate(screen) {
+            if (!state.currentLab) {
+                alert("Sila tambah atau pilih 'Lab Location' terlebih dahulu!");
+                return;
+            }
+            switchScreen(screen);
+        }
+
         function onLabSwitched(newLab) {
             state.currentLab = newLab;
             saveData();
-            addLog(`Switched active lab location to: ${newLab}`);
+            if (newLab) addLog(`Switched active lab location to: ${newLab}`);
             render();
         }
 
@@ -261,16 +290,18 @@
         }
 
         function deleteLabPrompt() {
+            if (!state.currentLab) return;
             if (confirm(`Are you sure you want to delete lab location '${state.currentLab}'?\nAll records inside will be permanently removed!`)) {
                 delete labProfiles[state.currentLab];
                 addLog(`Deleted lab profile: ${state.currentLab}`);
-                state.currentLab = Object.keys(labProfiles)[0] || '';
+                let keys = Object.keys(labProfiles);
+                state.currentLab = keys.length > 0 ? keys[0] : '';
                 saveData();
                 render();
             }
         }
 
-        function renderSearchBar(container, placeholder, onSearch) {
+        function renderSearchBar(container, placeholder) {
             let searchDiv = document.createElement('div');
             searchDiv.innerHTML = `<input type="text" placeholder="🔍 ${placeholder}" value="${state.searchQuery}" oninput="onSearchInput(this.value)">`;
             container.appendChild(searchDiv);
@@ -287,7 +318,7 @@
             return text.toLowerCase().includes(query.toLowerCase());
         }
 
-        function renderSelectionBar(container, totalCount, onDeleteSelected) {
+        function renderSelectionBar(container, totalCount) {
             let isAllSelected = totalCount > 0 && state.selectedIds.size === totalCount;
             let bar = document.createElement('div');
             bar.className = 'row card';
@@ -341,7 +372,7 @@
         }
 
         function renderEquipmentList(container) {
-            renderSearchBar(container, "Search Equipment Name...", val => {});
+            renderSearchBar(container, "Search Equipment Name...");
             let items = getFilteredCurrentItems();
             renderSelectionBar(container, items.length);
 
@@ -406,7 +437,7 @@
         }
 
         function renderTeachingList(container) {
-            renderSearchBar(container, "Search Teaching Material Name...", val => {});
+            renderSearchBar(container, "Search Teaching Material Name...");
             let items = getFilteredCurrentItems();
             renderSelectionBar(container, items.length);
 
@@ -476,7 +507,7 @@
         }
 
         function renderFaultyList(container) {
-            renderSearchBar(container, "Search Faulty Asset Name...", val => {});
+            renderSearchBar(container, "Search Faulty Asset Name...");
             let items = getFilteredCurrentItems();
             renderSelectionBar(container, items.length);
 
@@ -562,7 +593,7 @@
         }
 
         function renderWriteOffList(container) {
-            renderSearchBar(container, "Search Write Off Asset Name...", val => {});
+            renderSearchBar(container, "Search Write Off Asset Name...");
             let items = getFilteredCurrentItems();
             renderSelectionBar(container, items.length);
 
@@ -847,7 +878,7 @@
 
         function exportCSV() {
             let activeLab = labProfiles[state.currentLab];
-            if (!activeLab) return;
+            if (!activeLab) { alert("Tiada data makmal untuk dieksport!"); return; }
 
             let csv = `Lab Location,"${state.currentLab}"\nGenerated Date,"${new Date().toISOString()}"\n\n`;
 
