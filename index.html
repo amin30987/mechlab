@@ -399,6 +399,7 @@
             return [];
         }
 
+        /* --- SENARAI PERALATAN (PERUBAHAN: Nama Sahaja Dipaparkan) --- */
         function renderEquipmentList(container) {
             renderSearchBar(container, "Search Equipment Name...");
             let items = getFilteredCurrentItems();
@@ -411,7 +412,7 @@
                 card.innerHTML = `
                     <input type="checkbox" ${state.selectedIds.has(item.code) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.code}')">
                     <div class="item-info">
-                        <h2>${item.code} · ${item.name}</h2>
+                        <h2>${item.name}</h2>
                     </div>
                     ${item.imageUri ? `<img src="${item.imageUri}" class="item-thumb">` : ''}
                 `;
@@ -620,6 +621,7 @@
             goBack();
         }
 
+        /* --- SENARAI WRITE OFF (PERUBAHAN: Nama Sahaja Dipaparkan) --- */
         function renderWriteOffList(container) {
             renderSearchBar(container, "Search Write Off Asset Name...");
             let items = getFilteredCurrentItems();
@@ -632,7 +634,7 @@
                 card.innerHTML = `
                     <input type="checkbox" ${state.selectedIds.has(item.code) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.code}')">
                     <div class="item-info">
-                        <h2>${item.code} · ${item.name}</h2>
+                        <h2>${item.name}</h2>
                         <p>Reason: ${item.reason} • <b>${item.status}</b></p>
                     </div>
                 `;
@@ -839,7 +841,7 @@
                             if (descColIndex !== -1 && stockCodeColIndex !== -1) break;
                         }
 
-                        if (descColIndex === -1 || stockCodeColIndex !== -1 && false) return; // Teruskan jika tak jumpa tajuk
+                        if (descColIndex === -1 || (stockCodeColIndex !== -1 && false)) return;
 
                         // Cipta profil makmal baru jika belum ada
                         if (!labProfiles[trimmedName]) {
