@@ -12,7 +12,6 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         
-        /* Membolehkan skrol semula jadi di telefon bimbit */
         html, body {
             min-height: 100%;
             background-color: #ebf0f5; 
@@ -25,7 +24,23 @@
             min-height: 100vh;
         }
 
-        /* Top Navigation Bar - Ditetapkan di atas */
+        /* Spanduk Install PWA Banner */
+        #pwa-install-banner {
+            background-color: #145b9d;
+            color: white;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            position: sticky;
+            top: 0;
+            z-index: 101;
+        }
+
+        /* Top Navigation Bar */
         header { 
             background-color: #071827; 
             color: white; 
@@ -43,30 +58,30 @@
         header h1 { font-size: 17px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-back { background-color: #145b9d; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
-        /* Ruang Kandungan Utama - Boleh diskrol dengan lancar */
+        /* Main Scrollable Content */
         main { 
             flex: 1; 
             padding: 16px; 
             width: 100%; 
-            padding-bottom: 76px; /* Ruang supaya tidak bertindih dengan nav bawah */
+            padding-bottom: 76px;
         }
         
-        /* Kad Layout */
+        /* Cards Layout */
         .card { background-color: white; border-radius: 8px; border: 1px solid #b4c3d2; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); width: 100%; }
         .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .col { flex: 1; }
         
-        /* Tipografi */
+        /* Typography */
         h2 { font-size: 16px; font-weight: bold; color: #071827; margin-bottom: 6px; }
         p { font-size: 13px; color: #465564; }
         .text-center { text-align: center; }
 
-        /* Kawalan Borang */
+        /* Form Controls */
         label { font-size: 13px; font-weight: bold; color: #071827; display: block; margin: 10px 0 4px 0; }
         input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background-color: white; }
         textarea { resize: vertical; min-height: 70px; }
         
-        /* Butang */
+        /* Buttons */
         .btn { width: 100%; padding: 13px; border: none; border-radius: 6px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; }
         .btn-green { background-color: #249d6b; }
         .btn-blue { background-color: #145b9d; }
@@ -74,9 +89,9 @@
         .btn-red { background-color: #cc4c45; }
         .btn-purple { background-color: #800080; }
         .btn-navy { background-color: #071827; }
-        .btn-inline { width: auto; padding: 9px 14px; margin-top: 0; }
+        .btn-inline { width: auto; padding: 8px 12px; margin-top: 0; font-size: 12px; }
 
-        /* Bottom Tab Bar - Ditetapkan di bawah skrin */
+        /* Bottom Tab Bar */
         nav { 
             background-color: #071827; 
             display: flex; 
@@ -91,7 +106,7 @@
         .tab-btn { flex: 1; background: none; border: none; color: white; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .tab-btn.active { background-color: #145b9d; }
 
-        /* Senarai Item */
+        /* Item List Card */
         .item-card { display: flex; align-items: center; background: white; border: 1.5px solid #b4c3d2; border-radius: 6px; padding: 12px; margin-bottom: 8px; gap: 10px; cursor: pointer; width: 100%; }
         .item-card input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
         .item-info { flex: 1; }
@@ -102,6 +117,15 @@
     </style>
 </head>
 <body>
+
+    <!-- Spanduk PWA Installation (Kelihatan secara automatik jika peranti menyokong) -->
+    <div id="pwa-install-banner" class="hidden">
+        <span>📲 Install MechLab App?</span>
+        <div>
+            <button class="btn btn-green btn-inline" onclick="installPWA()">Install</button>
+            <button class="btn btn-red btn-inline" onclick="hideInstallBanner()">✕</button>
+        </div>
+    </div>
 
     <!-- Header -->
     <header>
@@ -135,7 +159,6 @@
             screenStack: ['HOME']
         };
 
-        // Tiada lagi lab1 / lab2 secara default
         let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {};
         let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
         
@@ -164,7 +187,7 @@
                 state.screenStack.push(screen);
             }
             render();
-            window.scrollTo(0, 0); // Atur skrol balik ke atas apabila bertukar skrin
+            window.scrollTo(0, 0);
         }
 
         function goBack() {
@@ -902,6 +925,33 @@
         }
 
         render();
+
+        /* --- PWA INSTALLATION EVENT LOGIC --- */
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            let banner = document.getElementById('pwa-install-banner');
+            if (banner) banner.classList.remove('hidden');
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted PWA install');
+                    }
+                    deferredPrompt = null;
+                    hideInstallBanner();
+                });
+            }
+        }
+
+        function hideInstallBanner() {
+            let banner = document.getElementById('pwa-install-banner');
+            if (banner) banner.classList.add('hidden');
+        }
 
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
