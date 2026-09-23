@@ -28,7 +28,6 @@
             min-height: 100vh;
         }
 
-        /* Spanduk Install PWA Banner */
         #pwa-install-banner {
             background-color: #145b9d;
             color: white;
@@ -44,7 +43,6 @@
             z-index: 101;
         }
 
-        /* Top Navigation Bar */
         header { 
             background-color: #071827; 
             color: white; 
@@ -62,7 +60,6 @@
         header h1 { font-size: 17px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-back { background-color: #145b9d; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
-        /* Main Scrollable Content */
         main { 
             flex: 1; 
             padding: 16px; 
@@ -70,22 +67,18 @@
             padding-bottom: 76px;
         }
         
-        /* Cards Layout */
         .card { background-color: white; border-radius: 8px; border: 1px solid #b4c3d2; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); width: 100%; }
         .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .col { flex: 1; }
         
-        /* Typography */
         h2 { font-size: 16px; font-weight: bold; color: #071827; margin-bottom: 6px; }
         p { font-size: 13px; color: #465564; }
         .text-center { text-align: center; }
 
-        /* Form Controls */
         label { font-size: 13px; font-weight: bold; color: #071827; display: block; margin: 10px 0 4px 0; }
         input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background-color: white; }
         textarea { resize: vertical; min-height: 70px; }
         
-        /* Buttons */
         .btn { width: 100%; padding: 13px; border: none; border-radius: 6px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; }
         .btn-green { background-color: #249d6b; }
         .btn-blue { background-color: #145b9d; }
@@ -95,7 +88,6 @@
         .btn-navy { background-color: #071827; }
         .btn-inline { width: auto; padding: 8px 12px; margin-top: 0; font-size: 12px; }
 
-        /* Bottom Tab Bar */
         nav { 
             background-color: #071827; 
             display: flex; 
@@ -110,7 +102,6 @@
         .tab-btn { flex: 1; background: none; border: none; color: white; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         .tab-btn.active { background-color: #145b9d; }
 
-        /* Item List Card */
         .item-card { display: flex; align-items: center; background: white; border: 1.5px solid #b4c3d2; border-radius: 6px; padding: 12px; margin-bottom: 8px; gap: 10px; cursor: pointer; width: 100%; }
         .item-card input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
         .item-info { flex: 1; }
@@ -122,7 +113,6 @@
 </head>
 <body>
 
-    <!-- Spanduk PWA Installation -->
     <div id="pwa-install-banner" class="hidden">
         <span>📲 Install MechLab App?</span>
         <div>
@@ -131,22 +121,18 @@
         </div>
     </div>
 
-    <!-- Header -->
     <header>
         <h1 id="header-title">Mechanical Lab</h1>
         <button id="back-btn" class="btn-back hidden" onclick="goBack()">← BACK</button>
     </header>
 
-    <!-- Main Content Area -->
     <main id="app-content"></main>
 
-    <!-- Bottom Navigation Bar -->
     <nav>
         <button class="tab-btn active" onclick="switchScreen('HOME')">📊 Dashboard</button>
         <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
     </nav>
 
-    <!-- Hidden Inputs -->
     <input type="file" id="file-input-excel" accept=".xlsx, .xls" class="hidden" onchange="handleExcelFileSelected(event)">
     <input type="file" id="file-input-img" accept="image/*" class="hidden" onchange="handleImageFileSelected(event)">
     <input type="file" id="camera-input-img" accept="image/*" capture="environment" class="hidden" onchange="handleImageFileSelected(event)">
@@ -337,15 +323,45 @@
             }
         }
 
+        /* --- FIX CARIAN (MENGELAKKAN LOSS OF FOCUS) --- */
         function renderSearchBar(container, placeholder) {
             let searchDiv = document.createElement('div');
-            searchDiv.innerHTML = `<input type="text" placeholder="🔍 ${placeholder}" value="${state.searchQuery}" oninput="onSearchInput(this.value)">`;
+            searchDiv.innerHTML = `<input type="text" id="search-input-field" placeholder="🔍 ${placeholder}" value="${state.searchQuery}">`;
             container.appendChild(searchDiv);
+
+            let inputElem = searchDiv.querySelector('#search-input-field');
+            inputElem.addEventListener('input', function(e) {
+                state.searchQuery = e.target.value;
+                filterListUI();
+            });
         }
 
-        function onSearchInput(val) {
-            state.searchQuery = val;
-            render();
+        function filterListUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv) return;
+            let items = getFilteredCurrentItems();
+
+            listDiv.innerHTML = '';
+            items.forEach(item => {
+                let card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <input type="checkbox" ${state.selectedIds.has(item.code || item.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.code || item.id}')">
+                    <div class="item-info">
+                        <h2>${item.name}</h2>
+                    </div>
+                    ${item.imageUri ? `<img src="${item.imageUri}" class="item-thumb">` : ''}
+                `;
+                card.onclick = () => switchScreen(getEditScreenName(), item.code || item.id);
+                listDiv.appendChild(card);
+            });
+        }
+
+        function getEditScreenName() {
+            if (state.currentScreen === 'EQUIPMENT_LIST') return 'EQUIPMENT_EDIT';
+            if (state.currentScreen === 'TEACHING_LIST') return 'TEACHING_EDIT';
+            if (state.currentScreen === 'FAULTY_LIST') return 'FAULTY_EDIT';
+            if (state.currentScreen === 'WRITEOFF_LIST') return 'WRITEOFF_EDIT';
         }
 
         function matchesQuery(text, query) {
@@ -413,20 +429,9 @@
             renderSelectionBar(container, items.length);
 
             let listDiv = document.createElement('div');
-            items.forEach(item => {
-                let card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <input type="checkbox" ${state.selectedIds.has(item.code) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.code}')">
-                    <div class="item-info">
-                        <h2>${item.name}</h2>
-                    </div>
-                    ${item.imageUri ? `<img src="${item.imageUri}" class="item-thumb">` : ''}
-                `;
-                card.onclick = () => switchScreen('EQUIPMENT_EDIT', item.code);
-                listDiv.appendChild(card);
-            });
+            listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
+            filterListUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-green';
@@ -475,6 +480,7 @@
             if (state.editingId) {
                 if (targetLab !== state.currentLab) {
                     let existingItem = currentProfile.equipmentList.find(i => i.code === state.editingId);
+                    // DUA-WAY REMOVAL: Dipadam daripada lokasi asal secara terus
                     currentProfile.equipmentList = currentProfile.equipmentList.filter(i => i.code !== state.editingId);
                     
                     targetProfile.equipmentList.push({ 
@@ -504,20 +510,9 @@
             renderSelectionBar(container, items.length);
 
             let listDiv = document.createElement('div');
-            items.forEach(item => {
-                let card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <input type="checkbox" ${state.selectedIds.has(item.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.id}')">
-                    <div class="item-info">
-                        <h2>${item.name}</h2>
-                        <p>Quantity / Unit: ${item.qtyUnit}</p>
-                    </div>
-                `;
-                card.onclick = () => switchScreen('TEACHING_EDIT', item.id);
-                listDiv.appendChild(card);
-            });
+            listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
+            filterListUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-purple';
@@ -574,20 +569,9 @@
             renderSelectionBar(container, items.length);
 
             let listDiv = document.createElement('div');
-            items.forEach(item => {
-                let card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <input type="checkbox" ${state.selectedIds.has(item.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.id}')">
-                    <div class="item-info">
-                        <h2>${item.name}</h2>
-                        <p>${item.problem} • ${item.date} • <b>${item.status}</b></p>
-                    </div>
-                `;
-                card.onclick = () => switchScreen('FAULTY_EDIT', item.id);
-                listDiv.appendChild(card);
-            });
+            listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
+            filterListUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-orange';
@@ -660,20 +644,9 @@
             renderSelectionBar(container, items.length);
 
             let listDiv = document.createElement('div');
-            items.forEach(item => {
-                let card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <input type="checkbox" ${state.selectedIds.has(item.code) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.code}')">
-                    <div class="item-info">
-                        <h2>${item.name}</h2>
-                        <p>Reason: ${item.reason} • <b>${item.status}</b></p>
-                    </div>
-                `;
-                card.onclick = () => switchScreen('WRITEOFF_EDIT', item.code);
-                listDiv.appendChild(card);
-            });
+            listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
+            filterListUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-red';
@@ -799,14 +772,14 @@
             container.innerHTML = `
                 <div class="card">
                     <h2>App Information</h2>
-                    <p>Version: v5.0.0 (Perfect In-Place Cell Mutation)</p>
+                    <p>Version: v6.0.0 (Native Layout & Live Alignment)</p>
                     <button class="btn btn-purple" onclick="switchScreen('LOGS')">📜 View Activity Logs</button>
                 </div>
 
                 <div class="card">
-                    <h2>Excel File Options</h2>
+                    <h2>Excel File Actions</h2>
                     <button class="btn btn-green" onclick="triggerExcelImport()">📂 Import Original Excel File (.xlsx)</button>
-                    <button class="btn btn-purple" onclick="exportFormattedExcel()">💾 Save & Download Exact Excel (.xlsx)</button>
+                    <button class="btn btn-purple" onclick="exportFormattedExcel()">💾 Save & Export Exact Excel (.xlsx)</button>
                 </div>
             `;
         }
@@ -823,7 +796,6 @@
             container.innerHTML = html;
         }
 
-        /* --- FUNGSI READ EXCEL --- */
         function triggerExcelImport() {
             document.getElementById('file-input-excel').click();
         }
@@ -838,7 +810,6 @@
             reader.onload = function(evt) {
                 try {
                     let arrayBuffer = evt.target.result;
-                    
                     let binary = "";
                     let bytes = new Uint8Array(arrayBuffer);
                     for (let i = 0; i < bytes.byteLength; i++) {
@@ -859,13 +830,13 @@
                             labProfiles[trimmedName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                         }
                         let profile = labProfiles[trimmedName];
-                        profile.equipmentList = []; // Reset untukelakkan duplikasi
+                        profile.equipmentList = [];
 
-                        let startRow = 11; // Baris 12 (0-indexed R=11)
+                        let startRow = 11; // Baris 12 (R=11)
 
                         for (let R = startRow; R < 200; ++R) {
-                            let descRef = XLSX.utils.encode_cell({c: 3, r: R});  // Lajur D
-                            let codeRef = XLSX.utils.encode_cell({c: 19, r: R}); // Lajur T
+                            let descRef = XLSX.utils.encode_cell({c: 3, r: R});
+                            let codeRef = XLSX.utils.encode_cell({c: 19, r: R});
 
                             let descCell = worksheet[descRef];
                             let codeCell = worksheet[codeRef];
@@ -877,11 +848,10 @@
 
                             if (rawName && rawCode && !rawCode.startsWith("(")) {
                                 let extra = {};
-                                // Simpan data asal lajur E sehingga S dan U hingga W
                                 for (let C = 0; C < 24; ++C) {
                                     let cRef = XLSX.utils.encode_cell({c: C, r: R});
                                     if (worksheet[cRef]) {
-                                        extra[C] = worksheet[cRef];
+                                        extra[C] = Object.assign({}, worksheet[cRef]);
                                     }
                                 }
 
@@ -915,7 +885,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        /* --- FUNGSI SAVE EXCEL TERUS (DIRECT CELL EDIT & AUTO SHIFT UP) --- */
+        /* --- EXPORT: BERSINKRONISASI LENGKAP TANPA BARIS KOSONG & KEKALKAN BORDER/GAYA --- */
         function exportFormattedExcel() {
             try {
                 if (!originalWorkbookBinary) {
@@ -940,7 +910,7 @@
                     let startRow = 11; // Baris 12 (0-indexed R=11)
                     let footerStartR = -1;
 
-                    // 1. Cari di mana terletaknya blok footer (Prepared by:)
+                    // Cari julat footer pengesahan
                     for (let R = startRow; R < 200; ++R) {
                         let descRef = XLSX.utils.encode_cell({c: 3, r: R});
                         if (worksheet[descRef] && String(worksheet[descRef].v).includes("Prepared by:")) {
@@ -949,8 +919,9 @@
                         }
                     }
 
-                    // 2. Kosongkan semua baris data lama dari startRow hingga sebelum footerStartR
                     let clearEndR = footerStartR !== -1 ? footerStartR : 150;
+
+                    // 1. Kosongkan julat lama untuk menghapuskan gapping/sel kosong
                     for (let R = startRow; R < clearEndR; ++R) {
                         for (let C = 0; C < 24; ++C) {
                             let cellRef = XLSX.utils.encode_cell({c: C, r: R});
@@ -958,11 +929,10 @@
                         }
                     }
 
-                    // 3. Tulis semula senarai peralatan semasa satu per satu (Auto Shift Up)
+                    // 2. Tulis semula senarai item yang dikemas kini (Shift Up automatik)
                     profile.equipmentList.forEach((item, index) => {
                         let targetRow = startRow + index;
 
-                        // Pulihkan data lajur asal jika wujud
                         if (item.extraCells) {
                             Object.keys(item.extraCells).forEach(cIdx => {
                                 let cRef = XLSX.utils.encode_cell({c: parseInt(cIdx), r: targetRow});
@@ -970,22 +940,32 @@
                             });
                         }
 
-                        let noRef = XLSX.utils.encode_cell({c: 2, r: targetRow});   // Col C
-                        let descRef = XLSX.utils.encode_cell({c: 3, r: targetRow});  // Col D
-                        let codeRef = XLSX.utils.encode_cell({c: 19, r: targetRow}); // Col T
-                        let locRef = XLSX.utils.encode_cell({c: 20, r: targetRow});  // Col U
+                        let noRef = XLSX.utils.encode_cell({c: 2, r: targetRow});
+                        let descRef = XLSX.utils.encode_cell({c: 3, r: targetRow});
+                        let codeRef = XLSX.utils.encode_cell({c: 19, r: targetRow});
+                        let locRef = XLSX.utils.encode_cell({c: 20, r: targetRow});
 
-                        worksheet[noRef] = { t: 'n', v: index + 1 };
-                        worksheet[descRef] = { t: 's', v: item.name };
-                        worksheet[codeRef] = { t: 's', v: item.code };
-                        worksheet[locRef] = { t: 's', v: labName };
+                        worksheet[noRef] = worksheet[noRef] || {};
+                        worksheet[noRef].v = index + 1;
+                        worksheet[noRef].t = 'n';
+
+                        worksheet[descRef] = worksheet[descRef] || {};
+                        worksheet[descRef].v = item.name;
+                        worksheet[descRef].t = 's';
+
+                        worksheet[codeRef] = worksheet[codeRef] || {};
+                        worksheet[codeRef].v = item.code;
+                        worksheet[codeRef].t = 's';
+
+                        worksheet[locRef] = worksheet[locRef] || {};
+                        worksheet[locRef].v = labName;
+                        worksheet[locRef].t = 's';
                     });
                 });
 
-                // Simpan fail Excel
                 XLSX.writeFile(workbook, originalFileName);
                 addLog("Saved inventory directly into original binary Excel template");
-                alert("Fail Excel berjaya disimpan! Baris kosong dipadamkan secara automatik dan susunan asal dipelihara 100%.");
+                alert("Fail Excel berjaya disimpan! Baris kosong dibuang, format dan garisan border kekal 100%.");
 
             } catch (err) {
                 console.error(err);
@@ -995,7 +975,6 @@
 
         render();
 
-        /* --- PWA INSTALLATION EVENT LOGIC --- */
         let deferredPrompt;
         window.addEventListener('beforeinstallprompt', (e) => {
             e.preventDefault();
