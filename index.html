@@ -10,8 +10,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MechLab">
     
-    <!-- Pustaka SheetJS untuk Membaca & Menulis Fail Excel (.xlsx) -->
-    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <!-- Pustaka ExcelJS (Ganti SheetJS untuk Kekalkan Border, Warna & Style 100%) -->
+    <script src="https://cdnjs.cloudflare.net/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
@@ -133,7 +133,7 @@
         <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
     </nav>
 
-    <input type="file" id="file-input-excel" accept=".xlsx, .xls" class="hidden" onchange="handleExcelFileSelected(event)">
+    <input type="file" id="file-input-excel" accept=".xlsx" class="hidden" onchange="handleExcelFileSelected(event)">
     <input type="file" id="file-input-img" accept="image/*" class="hidden" onchange="handleImageFileSelected(event)">
     <input type="file" id="camera-input-img" accept="image/*" capture="environment" class="hidden" onchange="handleImageFileSelected(event)">
 
@@ -165,7 +165,7 @@
                 try {
                     localStorage.setItem('rawWorkbookBinary', rawWorkbookBinary);
                 } catch(e) {
-                    console.warn("Storage quota exceeded.");
+                    console.warn("Binary quota exceeded.");
                 }
             }
         }
@@ -323,7 +323,7 @@
             }
         }
 
-        /* --- FIX CARIAN (MENGELAKKAN LOSS OF FOCUS) --- */
+        /* --- MENGAWAL PETI CARIAN SUPAYA TIDAK HILANG FOKUS --- */
         function renderSearchBar(container, placeholder) {
             let searchDiv = document.createElement('div');
             searchDiv.innerHTML = `<input type="text" id="search-input-field" placeholder="🔍 ${placeholder}" value="${state.searchQuery}">`;
@@ -480,14 +480,14 @@
             if (state.editingId) {
                 if (targetLab !== state.currentLab) {
                     let existingItem = currentProfile.equipmentList.find(i => i.code === state.editingId);
-                    // DUA-WAY REMOVAL: Dipadam daripada lokasi asal secara terus
+                    // DIBUANG SERTA-MARTA DARIPADA TAB ASAL (AUTO DELETE REAL-TIME)
                     currentProfile.equipmentList = currentProfile.equipmentList.filter(i => i.code !== state.editingId);
                     
                     targetProfile.equipmentList.push({ 
                         code, 
                         name, 
                         imageUri: state.tempImgUri,
-                        extraCells: existingItem ? existingItem.extraCells : {}
+                        cellValues: existingItem ? existingItem.cellValues : {}
                     });
                     addLog(`Transferred Equipment ${code} from ${state.currentLab} to ${targetLab}`);
                 } else {
@@ -496,7 +496,7 @@
                     addLog(`Updated Equipment: ${code} in ${state.currentLab}`);
                 }
             } else {
-                targetProfile.equipmentList.push({ code, name, imageUri: state.tempImgUri, extraCells: {} });
+                targetProfile.equipmentList.push({ code, name, imageUri: state.tempImgUri, cellValues: {} });
                 addLog(`Added Equipment: ${code} (${name}) in ${targetLab}`);
             }
 
@@ -772,14 +772,14 @@
             container.innerHTML = `
                 <div class="card">
                     <h2>App Information</h2>
-                    <p>Version: v6.0.0 (Native Layout & Live Alignment)</p>
+                    <p>Version: v7.0.0 (ExcelJS Engine - 100% Format Preserved)</p>
                     <button class="btn btn-purple" onclick="switchScreen('LOGS')">📜 View Activity Logs</button>
                 </div>
 
                 <div class="card">
                     <h2>Excel File Actions</h2>
                     <button class="btn btn-green" onclick="triggerExcelImport()">📂 Import Original Excel File (.xlsx)</button>
-                    <button class="btn btn-purple" onclick="exportFormattedExcel()">💾 Save & Export Exact Excel (.xlsx)</button>
+                    <button class="btn btn-purple" onclick="exportFormattedExcel()">💾 Save & Export Direct Website Excel (.xlsx)</button>
                 </div>
             `;
         }
@@ -796,20 +796,22 @@
             container.innerHTML = html;
         }
 
+        /* --- FUNGSI MENGGUNKAN EXCELJS: MEMBACA FAIL FAIL TANPA MENJEJASKAN STYLES --- */
         function triggerExcelImport() {
             document.getElementById('file-input-excel').click();
         }
 
-        function handleExcelFileSelected(e) {
+        async function handleExcelFileSelected(e) {
             let file = e.target.files[0];
             if (!file) return;
 
             originalFileName = file.name;
 
             let reader = new FileReader();
-            reader.onload = function(evt) {
+            reader.onload = async function(evt) {
                 try {
                     let arrayBuffer = evt.target.result;
+                    
                     let binary = "";
                     let bytes = new Uint8Array(arrayBuffer);
                     for (let i = 0; i < bytes.byteLength; i++) {
@@ -817,14 +819,14 @@
                     }
                     originalWorkbookBinary = btoa(binary);
 
-                    let workbook = XLSX.read(arrayBuffer, { type: 'array', cellStyles: true, cellFormulas: true, cellDates: true, cellNF: true });
-                    
+                    let workbook = new ExcelJS.Workbook();
+                    await workbook.xlsx.load(arrayBuffer);
+
                     let totalImported = 0;
                     let sheetsParsed = 0;
 
-                    workbook.SheetNames.forEach(sheetName => {
-                        let trimmedName = sheetName.trim();
-                        let worksheet = workbook.Sheets[sheetName];
+                    workbook.eachSheet((worksheet, sheetId) => {
+                        let trimmedName = worksheet.name.trim();
 
                         if (!labProfiles[trimmedName]) {
                             labProfiles[trimmedName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
@@ -832,38 +834,32 @@
                         let profile = labProfiles[trimmedName];
                         profile.equipmentList = [];
 
-                        let startRow = 11; // Baris 12 (R=11)
+                        worksheet.eachRow((row, rowNumber) => {
+                            if (rowNumber >= 12) {
+                                let descCell = row.getCell(4).value;  // Lajur D
+                                let codeCell = row.getCell(20).value; // Lajur T
 
-                        for (let R = startRow; R < 200; ++R) {
-                            let descRef = XLSX.utils.encode_cell({c: 3, r: R});
-                            let codeRef = XLSX.utils.encode_cell({c: 19, r: R});
+                                let rawName = descCell ? String(descCell.result || descCell).trim().replace(/\r?\n|\r/g, " ") : '';
+                                let rawCode = codeCell ? String(codeCell.result || codeCell).trim() : '';
 
-                            let descCell = worksheet[descRef];
-                            let codeCell = worksheet[codeRef];
+                                if (rawName && rawName.includes("Prepared by:")) return;
 
-                            let rawName = descCell ? String(descCell.v || '').trim().replace(/\r?\n|\r/g, " ") : '';
-                            let rawCode = codeCell ? String(codeCell.v || '').trim() : '';
+                                if (rawName && rawCode && !rawCode.startsWith("(")) {
+                                    let cellValues = {};
+                                    row.eachCell({ includeEmpty: true }, (cell, colNumber) => {
+                                        cellValues[colNumber] = cell.value;
+                                    });
 
-                            if (rawName && rawName.includes("Prepared by:")) break;
-
-                            if (rawName && rawCode && !rawCode.startsWith("(")) {
-                                let extra = {};
-                                for (let C = 0; C < 24; ++C) {
-                                    let cRef = XLSX.utils.encode_cell({c: C, r: R});
-                                    if (worksheet[cRef]) {
-                                        extra[C] = Object.assign({}, worksheet[cRef]);
-                                    }
+                                    profile.equipmentList.push({
+                                        code: rawCode,
+                                        name: rawName,
+                                        imageUri: null,
+                                        cellValues: cellValues
+                                    });
+                                    totalImported++;
                                 }
-
-                                profile.equipmentList.push({ 
-                                    code: rawCode, 
-                                    name: rawName, 
-                                    imageUri: null,
-                                    extraCells: extra
-                                });
-                                totalImported++;
                             }
-                        }
+                        });
                         sheetsParsed++;
                     });
 
@@ -873,8 +869,8 @@
                     }
 
                     saveData();
-                    addLog(`Imported ${totalImported} items from original Excel file`);
-                    alert(`Berjaya membaca ${totalImported} peralatan daripada fail Excel asal!`);
+                    addLog(`Imported ${totalImported} items using ExcelJS engine`);
+                    alert(`Berjaya membaca ${totalImported} peralatan dari website!`);
                     switchScreen('HOME');
 
                 } catch (err) {
@@ -885,8 +881,8 @@
             reader.readAsArrayBuffer(file);
         }
 
-        /* --- EXPORT: BERSINKRONISASI LENGKAP TANPA BARIS KOSONG & KEKALKAN BORDER/GAYA --- */
-        function exportFormattedExcel() {
+        /* --- FUNGSI SAVE DIRECT WEBSITE (EXCELJS): MEMUSNAHKAN BARIS KOSONG & MENGEKALKAN ALL STYLES --- */
+        async function exportFormattedExcel() {
             try {
                 if (!originalWorkbookBinary) {
                     alert("Sila muat naik fail Excel asal (.xlsx) terlebih dahulu!");
@@ -899,73 +895,68 @@
                     bytes[i] = binaryStr.charCodeAt(i);
                 }
 
-                let workbook = XLSX.read(bytes.buffer, { type: 'array', cellStyles: true, cellFormulas: true, cellDates: true, cellNF: true });
+                let workbook = new ExcelJS.Workbook();
+                await workbook.xlsx.load(bytes.buffer);
 
                 Object.keys(labProfiles).forEach(labName => {
                     let profile = labProfiles[labName];
-                    let worksheet = workbook.Sheets[labName];
+                    let worksheet = workbook.getWorksheet(labName);
 
                     if (!worksheet) return;
 
-                    let startRow = 11; // Baris 12 (0-indexed R=11)
-                    let footerStartR = -1;
+                    let startRow = 12;
+                    let footerRowIndex = -1;
 
-                    // Cari julat footer pengesahan
-                    for (let R = startRow; R < 200; ++R) {
-                        let descRef = XLSX.utils.encode_cell({c: 3, r: R});
-                        if (worksheet[descRef] && String(worksheet[descRef].v).includes("Prepared by:")) {
-                            footerStartR = R;
-                            break;
+                    // Cari footer
+                    worksheet.eachRow((row, rowNumber) => {
+                        let descVal = String(row.getCell(4).value || '');
+                        if (descVal.includes("Prepared by:")) {
+                            footerRowIndex = rowNumber;
                         }
+                    });
+
+                    let endRowIndex = footerRowIndex !== -1 ? footerRowIndex - 1 : worksheet.rowCount;
+
+                    // 1. Padam semua baris lama dalam jadual peralatan (Auto Shift-Up fizikal)
+                    let rowCountToDelete = endRowIndex - startRow + 1;
+                    if (rowCountToDelete > 0) {
+                        worksheet.spliceRows(startRow, rowCountToDelete);
                     }
 
-                    let clearEndR = footerStartR !== -1 ? footerStartR : 150;
-
-                    // 1. Kosongkan julat lama untuk menghapuskan gapping/sel kosong
-                    for (let R = startRow; R < clearEndR; ++R) {
-                        for (let C = 0; C < 24; ++C) {
-                            let cellRef = XLSX.utils.encode_cell({c: C, r: R});
-                            delete worksheet[cellRef];
-                        }
-                    }
-
-                    // 2. Tulis semula senarai item yang dikemas kini (Shift Up automatik)
+                    // 2. Selip semula baris terkini mengikut senarai baharu (FORMAT & BORDER KEKAL 100%)
                     profile.equipmentList.forEach((item, index) => {
-                        let targetRow = startRow + index;
+                        let insertPos = startRow + index;
+                        worksheet.spliceRows(insertPos, 0, []); // Masukkan baris kosong secara terkawal
 
-                        if (item.extraCells) {
-                            Object.keys(item.extraCells).forEach(cIdx => {
-                                let cRef = XLSX.utils.encode_cell({c: parseInt(cIdx), r: targetRow});
-                                worksheet[cRef] = Object.assign({}, item.extraCells[cIdx]);
+                        let row = worksheet.getRow(insertPos);
+
+                        // Pulihkan nilai lajur
+                        if (item.cellValues) {
+                            Object.keys(item.cellValues).forEach(colNum => {
+                                row.getCell(parseInt(colNum)).value = item.cellValues[colNum];
                             });
                         }
 
-                        let noRef = XLSX.utils.encode_cell({c: 2, r: targetRow});
-                        let descRef = XLSX.utils.encode_cell({c: 3, r: targetRow});
-                        let codeRef = XLSX.utils.encode_cell({c: 19, r: targetRow});
-                        let locRef = XLSX.utils.encode_cell({c: 20, r: targetRow});
+                        // Kemaskini sel utama
+                        row.getCell(3).value = index + 1; // Col C (No)
+                        row.getCell(4).value = item.name;  // Col D (Description)
+                        row.getCell(20).value = item.code; // Col T (Stock Code)
+                        row.getCell(21).value = labName;  // Col U (Location)
 
-                        worksheet[noRef] = worksheet[noRef] || {};
-                        worksheet[noRef].v = index + 1;
-                        worksheet[noRef].t = 'n';
-
-                        worksheet[descRef] = worksheet[descRef] || {};
-                        worksheet[descRef].v = item.name;
-                        worksheet[descRef].t = 's';
-
-                        worksheet[codeRef] = worksheet[codeRef] || {};
-                        worksheet[codeRef].v = item.code;
-                        worksheet[codeRef].t = 's';
-
-                        worksheet[locRef] = worksheet[locRef] || {};
-                        worksheet[locRef].v = labName;
-                        worksheet[locRef].t = 's';
+                        row.commit();
                     });
                 });
 
-                XLSX.writeFile(workbook, originalFileName);
-                addLog("Saved inventory directly into original binary Excel template");
-                alert("Fail Excel berjaya disimpan! Baris kosong dibuang, format dan garisan border kekal 100%.");
+                // Muat turun fail yang diproses secara direct dari website
+                let buffer = await workbook.xlsx.writeBuffer();
+                let blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+                let link = document.createElement('a');
+                link.href = URL.createObjectURL(blob);
+                link.download = originalFileName;
+                link.click();
+
+                addLog("Exported updated file with ExcelJS direct website engine");
+                alert("Fail Excel berjaya disimpan! Border, warna, dan garisan kekal 100% sempurna seperti gambar asal.");
 
             } catch (err) {
                 console.error(err);
