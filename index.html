@@ -1,2191 +1,413 @@
-package com.tarumt.mechanicallab;
+<!DOCTYPE html>
+<html lang="ms">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Mechanical Lab Inventory</title>
 
-import android.Manifest;
-import android.app.Activity;
-import android.app.AlertDialog;
-import android.app.DownloadManager;
-import android.app.ProgressDialog;
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.DialogInterface;
-import android.content.Intent;
-import android.content.IntentFilter;
-import android.content.SharedPreferences;
-import android.content.pm.PackageManager;
-import android.content.pm.ResolveInfo;
-import android.graphics.Color;
-import android.graphics.Typeface;
-import android.graphics.drawable.GradientDrawable;
-import android.net.Uri;
-import android.os.Build;
-import android.os.Bundle;
-import android.os.Environment;
-import android.os.Handler;
-import android.os.Looper;
-import android.os.Build.VERSION;
-import android.provider.MediaStore;
-import android.text.Editable;
-import android.text.InputType;
-import android.text.TextWatcher;
-import android.view.View;
-import android.view.ViewGroup;
-import android.view.inputmethod.EditorInfo;
-import android.widget.AdapterView;
-import android.widget.ArrayAdapter;
-import android.widget.Button;
-import android.widget.CheckBox;
-import android.widget.EditText;
-import android.widget.ImageView;
-import android.widget.LinearLayout;
-import android.widget.ScrollView;
-import android.widget.Space;
-import android.widget.Spinner;
-import android.widget.TextView;
-import android.widget.Toast;
-import androidx.core.app.ActivityCompat;
-import androidx.core.content.ContextCompat;
-import androidx.core.content.FileProvider;
-import com.google.android.gms.auth.api.signin.GoogleSignIn;
-import com.google.android.gms.auth.api.signin.GoogleSignInAccount;
-import com.google.android.gms.auth.api.signin.GoogleSignInClient;
-import com.google.android.gms.auth.api.signin.GoogleSignInOptions;
-import com.google.android.gms.common.api.ApiException;
-import com.google.android.gms.common.api.Scope;
-import com.google.android.gms.tasks.Task;
-import com.google.api.services.drive.DriveScopes;
-import com.google.gson.Gson;
-import com.google.gson.reflect.TypeToken;
-import java.io.BufferedReader;
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.InputStream;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.lang.reflect.Type;
-import java.nio.charset.StandardCharsets;
-import java.text.SimpleDateFormat;
-import java.util.ArrayList;
-import java.util.Date;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Locale;
-import java.util.Map;
-import java.util.Set;
-import java.util.Stack;
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
+        
+        body { 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh;
+            background-color: #ebf0f5; 
+            color: #0a192d;
+        }
 
-public class MainActivity extends Activity {
-   LinearLayout root;
-   LinearLayout content;
-   int navy = Color.rgb(7, 24, 39);
-   int blue = Color.rgb(20, 91, 157);
-   int green = Color.rgb(36, 157, 107);
-   int orange = Color.rgb(239, 139, 36);
-   int red = Color.rgb(204, 76, 69);
-   int purple = Color.rgb(128, 0, 128);
-   int pale = Color.rgb(235, 240, 245);
-   int cardBgColor = Color.rgb(255, 255, 255);
-   int textColorPrimary = Color.rgb(10, 25, 45);
+        header { 
+            background-color: #071827; 
+            color: white; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 16px; 
+            height: 56px; 
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        header h1 { font-size: 17px; font-weight: bold; }
+        .btn-back { background-color: #145b9d; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
-   TextView title;
-   int tsTitle = 18;
-   int tsHeader = 15;
-   int tsBody = 13;
-   int tsSmall = 11;
-   int tsNavTab = 14;
-   private String APP_VERSION_NAME = "1.2.0";
-   private int APP_VERSION_CODE = 3;
+        main { 
+            flex: 1; 
+            padding: 16px; 
+            width: 100%; 
+            padding-bottom: 76px;
+        }
+        
+        .card { background-color: white; border-radius: 8px; border: 1px solid #b4c3d2; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+        .col { flex: 1; }
+        
+        h2 { font-size: 16px; font-weight: bold; color: #071827; margin-bottom: 6px; }
+        p { font-size: 13px; color: #465564; }
+        .text-center { text-align: center; }
 
-   private static final int RC_SIGN_IN = 9001;
-   private static final int RC_PICK_IMAGE = 9002;
-   private static final int RC_PICK_CSV_FILE = 9003;
-   private static final int RC_CREATE_CSV_FILE = 9004;
-   private static final int RC_CAPTURE_CAMERA = 9005;
-   private static final int RC_CAMERA_PERMISSION = 9006;
+        label { font-size: 13px; font-weight: bold; color: #071827; display: block; margin: 10px 0 4px 0; }
+        input[type="text"], select, textarea { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background-color: white; }
+        
+        .btn { width: 100%; padding: 13px; border: none; border-radius: 6px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; }
+        .btn-green { background-color: #249d6b; }
+        .btn-blue { background-color: #145b9d; }
+        .btn-purple { background-color: #800080; }
+        .btn-red { background-color: #cc4c45; }
+        .btn-inline { width: auto; padding: 8px 12px; margin-top: 0; font-size: 12px; }
 
-   private GoogleSignInClient mGoogleSignInClient;
-   private TextView signInStatusTv;
-   private Stack<ScreenState> navigationStack = new Stack<>();
-   private static Map<String, LabProfile> labProfiles = new HashMap<>();
-   private static List<String> activityLogs = new ArrayList<>();
-   private static String currentLab = "";
-   private String searchQuery = "";
-   private String tempSelectedImageUri = null;
-   private Uri currentCameraPhotoUri = null;
-   private String currentEditingId = "";
-   private ImageView currentEditingImageView = null;
-   private Handler timeHandler = new Handler(Looper.getMainLooper());
-   private Runnable timeRunnable;
+        nav { 
+            background-color: #071827; 
+            display: flex; 
+            height: 56px; 
+            width: 100%; 
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+        }
+        .tab-btn { flex: 1; background: none; border: none; color: white; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+        
+        .item-card { display: flex; align-items: center; background: white; border: 1.5px solid #b4c3d2; border-radius: 6px; padding: 12px; margin-bottom: 8px; gap: 10px; cursor: pointer; }
+        .item-info { flex: 1; }
+        .hidden { display: none !important; }
+    </style>
+</head>
+<body>
 
-   private Set<String> selectedItemIds = new HashSet<>();
+    <header>
+        <h1 id="header-title">Mechanical Lab</h1>
+        <button id="back-btn" class="btn-back hidden" onclick="goBack()">← BACK</button>
+    </header>
 
-   int dp(float v) {
-      return (int)(v * this.getResources().getDisplayMetrics().density + 0.5F);
-   }
+    <main id="app-content"></main>
 
-   TextView tv(String s, int sp, int c) {
-      TextView t = new TextView(this);
-      t.setText(s);
-      t.setTextSize((float)sp);
-      t.setTextColor(c);
-      t.setPadding(this.dp(8.0F), this.dp(6.0F), this.dp(8.0F), this.dp(6.0F));
-      return t;
-   }
+    <nav>
+        <button class="tab-btn" onclick="switchScreen('HOME')">📊 Dashboard</button>
+        <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
+    </nav>
 
-   EditText et(String hint) {
-      EditText e = new EditText(this);
-      e.setHint(hint);
-      e.setHintTextColor(Color.rgb(120, 130, 140));
-      e.setTextColor(this.textColorPrimary);
-      e.setTextSize((float)this.tsBody);
-      e.setBackgroundColor(Color.WHITE);
-      e.setPadding(this.dp(10.0F), this.dp(10.0F), this.dp(10.0F), this.dp(10.0F));
-      return e;
-   }
+    <input type="file" id="file-input-csv" accept=".csv" class="hidden" onchange="handleCSVImport(event)">
 
-   Button btn(String s, int color) {
-      Button b = new Button(this);
-      b.setText(s);
-      b.setTextColor(-1);
-      b.setTextSize((float)this.tsBody);
-      b.setAllCaps(false);
-      b.setBackgroundColor(color);
-      b.setPadding(this.dp(8.0F), this.dp(6.0F), this.dp(8.0F), this.dp(6.0F));
-      return b;
-   }
+    <script>
+        let state = {
+            currentScreen: 'HOME',
+            currentLab: '',
+            searchQuery: '',
+            editingId: null,
+            screenStack: ['HOME']
+        };
 
-   private void addLog(String action) {
-      String timestamp = (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())).format(new Date());
-      String logEntry = "[" + timestamp + "] " + action;
-      activityLogs.add(0, logEntry);
-      this.saveData();
-   }
+        // Rekod laluan lokasi Makmal (Default)
+        let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {
+            "N101A": { equipmentList: [] },
+            "N101B": { equipmentList: [] },
+            "N102": { equipmentList: [] },
+            "P103": { equipmentList: [] },
+            "P104": { equipmentList: [] },
+            "SE008": { equipmentList: [] }
+        };
 
-   private void saveData() {
-      SharedPreferences sharedPreferences = this.getSharedPreferences("MechanicalLabData", 0);
-      SharedPreferences.Editor editor = sharedPreferences.edit();
-      Gson gson = new Gson();
-      editor.putString("lab_profiles_list", gson.toJson(labProfiles));
-      editor.putString("activity_logs_list", gson.toJson(activityLogs));
-      editor.putString("current_lab_selected", currentLab);
-      editor.apply();
-   }
+        let labKeys = Object.keys(labProfiles);
+        state.currentLab = localStorage.getItem('currentLab') || (labKeys.length > 0 ? labKeys[0] : 'N101A');
 
-   private void loadData() {
-      SharedPreferences sharedPreferences = this.getSharedPreferences("MechanicalLabData", 0);
-      Gson gson = new Gson();
-      String jsonLab = sharedPreferences.getString("lab_profiles_list", null);
-      String jsonLogs = sharedPreferences.getString("activity_logs_list", null);
-      currentLab = sharedPreferences.getString("current_lab_selected", "");
-      if (jsonLab != null) {
-         Type type = (new TypeToken<HashMap<String, LabProfile>>() {}).getType();
-         labProfiles = gson.fromJson(jsonLab, type);
-      }
+        function saveData() {
+            localStorage.setItem('labProfiles', JSON.stringify(labProfiles));
+            localStorage.setItem('currentLab', state.currentLab);
+        }
 
-      if (labProfiles == null) {
-         labProfiles = new HashMap<>();
-      }
-
-      if (labProfiles.isEmpty()) {
-         labProfiles.put("Lab 1 (Mechanical)", new LabProfile("Lab 1 (Mechanical)"));
-         labProfiles.put("Lab 2 (Automotive)", new LabProfile("Lab 2 (Automotive)"));
-         currentLab = "Lab 1 (Mechanical)";
-      } else if (currentLab.isEmpty() || !labProfiles.containsKey(currentLab)) {
-         currentLab = labProfiles.keySet().iterator().next();
-      }
-
-      if (jsonLogs != null) {
-         Type typeLog = (new TypeToken<List<String>>() {}).getType();
-         activityLogs = gson.fromJson(jsonLogs, typeLog);
-      }
-
-      if (activityLogs == null) {
-         activityLogs = new ArrayList<>();
-      }
-   }
-
-   @Override
-   protected void onCreate(Bundle b) {
-      super.onCreate(b);
-      this.loadData();
-
-      try {
-         this.APP_VERSION_NAME = this.getPackageManager().getPackageInfo(this.getPackageName(), 0).versionName;
-         this.APP_VERSION_CODE = this.getPackageManager().getPackageInfo(this.getPackageName(), 0).versionCode;
-      } catch (Exception e) {
-         e.printStackTrace();
-      }
-
-      if (VERSION.SDK_INT >= 19) {
-         this.getWindow().clearFlags(67108864);
-      }
-
-      GoogleSignInOptions gso = (new GoogleSignInOptions.Builder(GoogleSignInOptions.DEFAULT_SIGN_IN))
-              .requestIdToken("120049887166-39o0k7st4a4mg34a969llsgtkpek4evs.apps.googleusercontent.com")
-              .requestEmail()
-              .requestScopes(new Scope(DriveScopes.DRIVE_FILE))
-              .build();
-      this.mGoogleSignInClient = GoogleSignIn.getClient(this, gso);
-      this.navigateTo(ScreenState.HOME);
-   }
-
-   private void navigateTo(ScreenState targetState) {
-      if (this.navigationStack.isEmpty() || this.navigationStack.peek() != targetState) {
-         this.navigationStack.push(targetState);
-      }
-      this.selectedItemIds.clear();
-      this.searchQuery = "";
-      this.renderScreen(targetState);
-   }
-
-   private void renderScreen(ScreenState state) {
-      switch (state.ordinal()) {
-         case 0:
-            this.renderHome();
-            break;
-         case 1:
-            this.renderTeaching();
-            break;
-         case 2:
-            this.renderEditTeaching(this.currentEditingId);
-            break;
-         case 3:
-            this.renderEquipment();
-            break;
-         case 4:
-            this.renderEditEquipment(this.currentEditingId);
-            break;
-         case 5:
-            this.renderFaulty();
-            break;
-         case 6:
-            this.renderEditFaulty(this.currentEditingId);
-            break;
-         case 7:
-            this.renderWriteOff();
-            break;
-         case 8:
-            this.renderEditWriteOff(this.currentEditingId);
-            break;
-         case 9:
-            this.renderMore();
-            break;
-         case 10:
-            this.renderLogs();
-            break;
-         default:
-            this.renderHome();
-      }
-   }
-
-   @Override
-   public void onBackPressed() {
-      if (this.navigationStack.size() > 1) {
-         this.navigationStack.pop();
-         this.selectedItemIds.clear();
-         this.searchQuery = "";
-         this.renderScreen(this.navigationStack.peek());
-      } else {
-         (new AlertDialog.Builder(this))
-                 .setTitle("Exit Confirmation")
-                 .setMessage("Are you sure you want to exit the application?")
-                 .setPositiveButton("Yes", (dialog, which) -> this.finish())
-                 .setNegativeButton("No", null)
-                 .show();
-      }
-   }
-
-   void base(String sectionTitle) {
-      this.root = new LinearLayout(this);
-      this.root.setOrientation(LinearLayout.VERTICAL);
-      this.root.setBackgroundColor(this.pale);
-      this.root.setFitsSystemWindows(true);
-      LinearLayout bar = new LinearLayout(this);
-      bar.setGravity(16);
-      bar.setPadding(this.dp(12.0F), 0, this.dp(12.0F), 0);
-      bar.setBackgroundColor(this.navy);
-      String fullHeading = sectionTitle;
-      if (!currentLab.isEmpty()) {
-         fullHeading = sectionTitle + " · " + currentLab;
-      }
-
-      this.title = this.tv(fullHeading, this.tsTitle, -1);
-      this.title.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      bar.addView(this.title, new LinearLayout.LayoutParams(0, this.dp(50.0F), 1.0F));
-      Button backBtn = this.btn("← BACK", this.blue);
-      backBtn.setTextSize((float)this.tsSmall);
-      bar.addView(backBtn, new LinearLayout.LayoutParams(-2, this.dp(36.0F)));
-      backBtn.setOnClickListener((v) -> this.onBackPressed());
-      this.root.addView(bar);
-      this.content = new LinearLayout(this);
-      this.content.setOrientation(LinearLayout.VERTICAL);
-      this.content.setPadding(this.dp(12.0F), this.dp(12.0F), this.dp(12.0F), this.dp(12.0F));
-      ScrollView sv = new ScrollView(this);
-      sv.setFillViewport(true);
-      sv.addView(this.content);
-      this.root.addView(sv, new LinearLayout.LayoutParams(-1, 0, 1.0F));
-      LinearLayout nav = new LinearLayout(this);
-      nav.setBackgroundColor(this.navy);
-      Button btnList = this.btn("📋  List", this.navy);
-      btnList.setTextSize((float)this.tsNavTab);
-      btnList.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      nav.addView(btnList, new LinearLayout.LayoutParams(0, this.dp(56.0F), 1.0F));
-      btnList.setOnClickListener((v) -> this.navigateTo(ScreenState.HOME));
-      Button btnMore = this.btn("⋮  More", this.navy);
-      btnMore.setTextSize((float)this.tsNavTab);
-      btnMore.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      nav.addView(btnMore, new LinearLayout.LayoutParams(0, this.dp(56.0F), 1.0F));
-      btnMore.setOnClickListener((v) -> this.navigateTo(ScreenState.MORE));
-      this.root.addView(nav);
-      this.setContentView(this.root);
-   }
-
-   void renderHome() {
-      this.base("Mechanical Lab");
-      LinearLayout centerLayout = new LinearLayout(this);
-      centerLayout.setOrientation(LinearLayout.VERTICAL);
-      centerLayout.setGravity(1);
-      TextView welcome = this.tv("WELCOME", this.tsHeader + 4, this.navy);
-      welcome.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      welcome.setGravity(17);
-      centerLayout.addView(welcome);
-      final TextView dateTimeTv = this.tv("", this.tsBody, -12303292);
-      dateTimeTv.setGravity(17);
-      centerLayout.addView(dateTimeTv);
-      if (this.timeRunnable != null) {
-         this.timeHandler.removeCallbacks(this.timeRunnable);
-      }
-
-      this.timeRunnable = new Runnable() {
-         public void run() {
-            SimpleDateFormat sdf = new SimpleDateFormat("EEEE, dd MMMM yyyy - HH:mm:ss", Locale.getDefault());
-            dateTimeTv.setText(sdf.format(new Date()));
-            MainActivity.this.timeHandler.postDelayed(this, 1000L);
-         }
-      };
-      this.timeHandler.post(this.timeRunnable);
-      Space space1 = new Space(this);
-      centerLayout.addView(space1, new LinearLayout.LayoutParams(1, this.dp(10.0F)));
-
-      LinearLayout labCard = new LinearLayout(this);
-      labCard.setOrientation(LinearLayout.VERTICAL);
-      labCard.setBackgroundColor(-1);
-      labCard.setPadding(this.dp(10.0F), this.dp(10.0F), this.dp(10.0F), this.dp(10.0F));
-
-      TextView labHeader = this.tv("📍 Active Lab Location:", this.tsBody, this.navy);
-      labHeader.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      labHeader.setPadding(0, 0, 0, this.dp(4.0F));
-      labCard.addView(labHeader);
-
-      LinearLayout labOptLayout = new LinearLayout(this);
-      labOptLayout.setOrientation(LinearLayout.HORIZONTAL);
-      labOptLayout.setGravity(16);
-
-      Spinner labSpinner = new Spinner(this);
-      final List<String> labsList = new ArrayList<>(labProfiles.keySet());
-      if (labsList.isEmpty()) {
-         labsList.add("No Lab Selected");
-      }
-
-      ArrayAdapter<String> adapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, labsList) {
-         public View getView(int position, View convertView, ViewGroup parent) {
-            TextView v = (TextView)super.getView(position, convertView, parent);
-            v.setTextColor(-16777216);
-            v.setBackgroundColor(-1);
-            v.setTextSize((float)MainActivity.this.tsBody);
-            v.setPadding(MainActivity.this.dp(8.0F), MainActivity.this.dp(6.0F), MainActivity.this.dp(8.0F), MainActivity.this.dp(6.0F));
-            return v;
-         }
-
-         public View getDropDownView(int position, View convertView, ViewGroup parent) {
-            TextView v = (TextView)super.getDropDownView(position, convertView, parent);
-            v.setTextColor(-16777216);
-            v.setBackgroundColor(-1);
-            v.setTextSize((float)MainActivity.this.tsBody);
-            v.setPadding(MainActivity.this.dp(12.0F), MainActivity.this.dp(10.0F), MainActivity.this.dp(12.0F), MainActivity.this.dp(10.0F));
-            return v;
-         }
-      };
-      labSpinner.setAdapter(adapter);
-
-      if (!currentLab.isEmpty() && labsList.contains(currentLab)) {
-         labSpinner.setSelection(labsList.indexOf(currentLab));
-      }
-
-      labSpinner.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
-         private boolean isInitial = true;
-
-         @Override
-         public void onItemSelected(AdapterView<?> parent, View view, int position, long id) {
-            if (isInitial) {
-               isInitial = false;
-               return;
+        function switchScreen(screen, editingId = null) {
+            state.currentScreen = screen;
+            state.editingId = editingId;
+            state.searchQuery = '';
+            
+            if (state.screenStack[state.screenStack.length - 1] !== screen) {
+                state.screenStack.push(screen);
             }
-            if (!labsList.isEmpty() && position < labsList.size()) {
-               String selectedLab = labsList.get(position);
-               if (!selectedLab.equals(currentLab) && labProfiles.containsKey(selectedLab)) {
-                  currentLab = selectedLab;
-                  MainActivity.this.saveData();
-                  MainActivity.this.addLog("Switched active lab location to: " + currentLab);
-                  Toast.makeText(MainActivity.this, "Switched to location: " + currentLab, Toast.LENGTH_SHORT).show();
-                  MainActivity.this.renderScreen(ScreenState.HOME);
-               }
+            render();
+            window.scrollTo(0, 0);
+        }
+
+        function goBack() {
+            if (state.screenStack.length > 1) {
+                state.screenStack.pop();
+                state.currentScreen = state.screenStack[state.screenStack.length - 1];
+                state.searchQuery = '';
+                render();
+                window.scrollTo(0, 0);
             }
-         }
+        }
 
-         @Override
-         public void onNothingSelected(AdapterView<?> parent) {}
-      });
+        function render() {
+            let content = document.getElementById('app-content');
+            let backBtn = document.getElementById('back-btn');
+            let headerTitle = document.getElementById('header-title');
 
-      Button addLabBtn = this.btn("＋ Add", this.green);
-      addLabBtn.setOnClickListener((v) -> this.showAddLabDialog());
-
-      Button deleteLabBtn = this.btn("🗑", this.red);
-      deleteLabBtn.setOnClickListener((v) -> {
-         if (!labProfiles.isEmpty() && labSpinner.getSelectedItem() != null) {
-            String labToDelete = labSpinner.getSelectedItem().toString();
-            if (labProfiles.containsKey(labToDelete)) {
-               this.showDeleteLabDialog(labToDelete);
-            }
-         } else {
-            Toast.makeText(this, "No lab location available to delete!", Toast.LENGTH_SHORT).show();
-         }
-      });
-
-      labOptLayout.addView(labSpinner, new LinearLayout.LayoutParams(0, -2, 1.0F));
-      labOptLayout.addView(addLabBtn, new LinearLayout.LayoutParams(-2, this.dp(38.0F)));
-      labOptLayout.addView(deleteLabBtn, new LinearLayout.LayoutParams(-2, this.dp(38.0F)));
-      labCard.addView(labOptLayout);
-      centerLayout.addView(labCard, new LinearLayout.LayoutParams(-1, -2));
-
-      Space spaceTop = new Space(this);
-      centerLayout.addView(spaceTop, new LinearLayout.LayoutParams(1, this.dp(14.0F)));
-
-      LinearLayout grid = new LinearLayout(this);
-      grid.setOrientation(LinearLayout.VERTICAL);
-      String[][] q = new String[][]{
-              {"⚙  Equipment List", "Lab equipment & apparatus"},
-              {"📚  Teaching Materials", "Teaching materials to order"},
-              {"🔧  Faulty / Repair", "Report & track issues"},
-              {"🗑  Asset to Write Off", "List & disposal status"}
-      };
-      int[] colors = new int[]{this.green, this.purple, this.orange, this.red};
-
-      for(int i = 0; i < 4; ++i) {
-         final int index = i;
-         Button b = this.btn(q[i][0] + "\n" + q[i][1], colors[i]);
-         b.setGravity(17);
-         b.setTextSize((float)this.tsHeader);
-         b.setPadding(this.dp(12.0F), this.dp(14.0F), this.dp(12.0F), this.dp(14.0F));
-         grid.addView(b, new LinearLayout.LayoutParams(-1, -2));
-         b.setOnClickListener((v) -> {
-            if (!currentLab.isEmpty() && labProfiles.containsKey(currentLab)) {
-               switch (index) {
-                  case 0:
-                     this.navigateTo(ScreenState.EQUIPMENT_LIST);
-                     break;
-                  case 1:
-                     this.navigateTo(ScreenState.TEACHING_LIST);
-                     break;
-                  case 2:
-                     this.navigateTo(ScreenState.FAULTY_LIST);
-                     break;
-                  case 3:
-                     this.navigateTo(ScreenState.WRITEOFF_LIST);
-               }
+            headerTitle.innerText = state.currentLab ? `${getScreenTitle(state.currentScreen)} · ${state.currentLab}` : getScreenTitle(state.currentScreen);
+            
+            if (state.screenStack.length > 1) {
+                backBtn.classList.remove('hidden');
             } else {
-               Toast.makeText(this, "Please add or select a lab profile first!", Toast.LENGTH_SHORT).show();
+                backBtn.classList.add('hidden');
             }
-         });
-         Space sp = new Space(this);
-         grid.addView(sp, new LinearLayout.LayoutParams(1, this.dp(8.0F)));
-      }
 
-      centerLayout.addView(grid);
-      this.content.addView(centerLayout, new LinearLayout.LayoutParams(-1, -1));
-   }
+            content.innerHTML = '';
 
-   private void showAddLabDialog() {
-      AlertDialog.Builder builder = new AlertDialog.Builder(this);
-      builder.setTitle("Add New Lab Location");
-      EditText input = this.et("Enter Lab Name");
-      builder.setView(input);
-      builder.setPositiveButton("Create", (dialog, which) -> {
-         String newLabName = input.getText().toString().trim();
-         if (!newLabName.isEmpty()) {
-            if (!labProfiles.containsKey(newLabName)) {
-               labProfiles.put(newLabName, new LabProfile(newLabName));
-               currentLab = newLabName;
-               this.saveData();
-               this.addLog("Created new Lab Location: " + newLabName);
-               Toast.makeText(this, "Lab " + newLabName + " Created!", Toast.LENGTH_SHORT).show();
-               this.renderScreen(ScreenState.HOME);
+            switch (state.currentScreen) {
+                case 'HOME': renderHome(content); break;
+                case 'EQUIPMENT_LIST': renderEquipmentList(content); break;
+                case 'EQUIPMENT_EDIT': renderEquipmentEdit(content); break;
+                case 'MORE': renderMore(content); break;
+            }
+        }
+
+        function getScreenTitle(screen) {
+            switch(screen) {
+                case 'HOME': return 'Mechanical Lab';
+                case 'EQUIPMENT_LIST': return 'Equipment List';
+                case 'EQUIPMENT_EDIT': return state.editingId ? 'Edit / Transfer Equipment' : 'Add Equipment';
+                case 'MORE': return 'More Options';
+                default: return 'Mechanical Lab';
+            }
+        }
+
+        function renderHome(container) {
+            let labs = Object.keys(labProfiles);
+            let optionsHTML = labs.map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('');
+
+            container.innerHTML = `
+                <div class="card text-center">
+                    <h2>WELCOME</h2>
+                    <p>${new Date().toLocaleDateString()}</p>
+                </div>
+
+                <div class="card">
+                    <label>📍 Active Lab Location:</label>
+                    <div class="row">
+                        <select id="lab-select" onchange="onLabSwitched(this.value)" class="col">
+                            ${optionsHTML}
+                        </select>
+                        <button class="btn btn-green btn-inline" onclick="addLabPrompt()">＋ Add</button>
+                    </div>
+                </div>
+
+                <div>
+                    <button class="btn btn-green" onclick="switchScreen('EQUIPMENT_LIST')">⚙ Equipment List & Transfer</button>
+                </div>
+            `;
+        }
+
+        function onLabSwitched(newLab) {
+            state.currentLab = newLab;
+            saveData();
+            render();
+        }
+
+        function addLabPrompt() {
+            let name = prompt("Masukkan Nama Lokasi / Tab Baharu:");
+            if (name && name.trim()) {
+                name = name.trim();
+                if (!labProfiles[name]) {
+                    labProfiles[name] = { equipmentList: [] };
+                    state.currentLab = name;
+                    saveData();
+                    render();
+                } else {
+                    alert("Lokasi ini sudah wujud!");
+                }
+            }
+        }
+
+        function renderSearchBar(container, placeholder) {
+            let searchDiv = document.createElement('div');
+            searchDiv.innerHTML = `<input type="text" id="search-input-field" placeholder="🔍 ${placeholder}" value="${state.searchQuery}">`;
+            container.appendChild(searchDiv);
+
+            let inputElem = searchDiv.querySelector('#search-input-field');
+            inputElem.addEventListener('input', function(e) {
+                state.searchQuery = e.target.value;
+                filterListUI();
+            });
+        }
+
+        function filterListUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv) return;
+            let activeLab = labProfiles[state.currentLab];
+            if (!activeLab) return;
+
+            let q = state.searchQuery.toLowerCase();
+            let items = activeLab.equipmentList.filter(i => !q || i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
+
+            listDiv.innerHTML = '';
+            items.forEach(item => {
+                let card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <div class="item-info">
+                        <h2>${item.name}</h2>
+                        <p style="font-size:11px; color:#666;">Kod: ${item.code}</p>
+                    </div>
+                `;
+                card.onclick = () => switchScreen('EQUIPMENT_EDIT', item.code);
+                listDiv.appendChild(card);
+            });
+        }
+
+        function renderEquipmentList(container) {
+            renderSearchBar(container, "Cari Nama / Kod Peralatan...");
+
+            let listDiv = document.createElement('div');
+            listDiv.id = 'items-list-container';
+            container.appendChild(listDiv);
+            filterListUI();
+
+            let addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-green';
+            addBtn.innerText = '＋ Tambah Peralatan Baharu';
+            addBtn.onclick = () => switchScreen('EQUIPMENT_EDIT', null);
+            container.appendChild(addBtn);
+        }
+
+        function renderEquipmentEdit(container) {
+            let activeLab = labProfiles[state.currentLab];
+            let item = activeLab ? activeLab.equipmentList.find(i => i.code === state.editingId) : null;
+
+            let labsOptions = Object.keys(labProfiles).map(l => 
+                `<option value="${l}" ${l === state.currentLab ? 'selected' : ''}>${l}</option>`
+            ).join('');
+
+            container.innerHTML = `
+                <div class="card">
+                    <label>📦 Stock List Number / Kod Peralatan:</label>
+                    <input type="text" id="eq-code" placeholder="Cth: ST/P103/2015/E001" value="${item ? item.code : ''}">
+                    
+                    <label>⚙ Nama Peralatan:</label>
+                    <input type="text" id="eq-name" placeholder="Cth: Governors Apparatus" value="${item ? item.name : ''}">
+
+                    <label>📍 Lokasi / Tab (Pindah Peralatan):</label>
+                    <select id="eq-lab-target">
+                        ${labsOptions}
+                    </select>
+
+                    <button class="btn btn-green" onclick="saveEquipment()">💾 Simpan / Pindah Peralatan</button>
+                    ${item ? `<button class="btn btn-red" onclick="deleteEquipment('${item.code}')">❌ Padam Peralatan</button>` : ''}
+                </div>
+            `;
+        }
+
+        /* --- FUNGSI PINDAH SAMA ADA DALAM TAB SAMA ATAU KE TAB LAIN (AUTO DELETE ASAL) --- */
+        function saveEquipment() {
+            let code = document.getElementById('eq-code').value.trim();
+            let name = document.getElementById('eq-name').value.trim();
+            let targetLab = document.getElementById('eq-lab-target').value;
+
+            if (!code || !name) { alert("Sila isi Kod dan Nama Peralatan!"); return; }
+
+            let currentProfile = labProfiles[state.currentLab];
+            let targetProfile = labProfiles[targetLab];
+
+            if (state.editingId) {
+                // Padam terus dari tab/lokasi asal
+                currentProfile.equipmentList = currentProfile.equipmentList.filter(i => i.code !== state.editingId);
+                
+                // Masukkan ke tab destinasi baharu
+                targetProfile.equipmentList.push({ code, name });
+                alert(`Peralatan berjaya dipindahkan ke lokasi: ${targetLab}`);
             } else {
-               Toast.makeText(this, "Lab location already exists!", Toast.LENGTH_SHORT).show();
+                targetProfile.equipmentList.push({ code, name });
+                alert(`Peralatan baharu ditambah ke lokasi: ${targetLab}`);
             }
-         }
-      });
-      builder.setNegativeButton("Cancel", null);
-      builder.show();
-   }
 
-   private void showDeleteLabDialog(String labName) {
-      new AlertDialog.Builder(this)
-              .setTitle("Confirm Lab Deletion (" + labName + ")")
-              .setMessage("Are you sure you want to delete lab location '" + labName + "'?\n\nAll records inside this lab will be permanently removed!")
-              .setPositiveButton("Yes, Delete Lab", (dialog, which) -> {
-                 labProfiles.remove(labName);
-                 this.addLog("Deleted lab profile: " + labName);
-                 if (currentLab.equals(labName)) {
-                    currentLab = labProfiles.isEmpty() ? "" : labProfiles.keySet().iterator().next();
-                 }
-                 this.saveData();
-                 Toast.makeText(this, "Lab " + labName + " Deleted!", Toast.LENGTH_SHORT).show();
-                 this.renderScreen(ScreenState.HOME);
-              })
-              .setNegativeButton("Cancel", null)
-              .show();
-   }
+            saveData();
+            goBack();
+        }
 
-   private interface OnSearchQueryChangeListener {
-      void onQueryChange(String query);
-   }
-
-   private boolean matchesQuery(String text, String query) {
-      if (query == null || query.trim().isEmpty()) {
-         return true;
-      }
-      if (text == null) {
-         return false;
-      }
-      String textLower = text.toLowerCase(Locale.ROOT);
-      String queryLower = query.trim().toLowerCase(Locale.ROOT);
-      if (textLower.contains(queryLower)) {
-         return true;
-      }
-      String[] keywords = queryLower.split("\\s+");
-      for (String kw : keywords) {
-         if (!kw.isEmpty() && !textLower.contains(kw)) {
-            return false;
-         }
-      }
-      return true;
-   }
-
-   private void renderSearchBar(String hint, OnSearchQueryChangeListener listener) {
-      EditText searchBox = new EditText(this);
-      searchBox.setHint("🔍 " + hint);
-      searchBox.setHintTextColor(Color.rgb(120, 130, 140));
-      searchBox.setTextColor(this.textColorPrimary);
-      searchBox.setTextSize((float)this.tsBody);
-      searchBox.setBackgroundColor(Color.WHITE);
-      searchBox.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_FLAG_CAP_SENTENCES);
-      searchBox.setImeOptions(EditorInfo.IME_ACTION_SEARCH);
-      searchBox.setPadding(this.dp(10.0F), this.dp(10.0F), this.dp(10.0F), this.dp(10.0F));
-
-      if (this.searchQuery != null && !this.searchQuery.isEmpty()) {
-         searchBox.setText(this.searchQuery);
-         searchBox.setSelection(this.searchQuery.length());
-      }
-
-      searchBox.addTextChangedListener(new TextWatcher() {
-         @Override
-         public void beforeTextChanged(CharSequence s, int start, int count, int after) {}
-
-         @Override
-         public void onTextChanged(CharSequence s, int start, int before, int count) {
-            MainActivity.this.searchQuery = s.toString();
-            if (listener != null) {
-               listener.onQueryChange(MainActivity.this.searchQuery);
+        function deleteEquipment(code) {
+            if (confirm("Adakah anda pasti mahu memadam peralatan ini?")) {
+                let activeLab = labProfiles[state.currentLab];
+                activeLab.equipmentList = activeLab.equipmentList.filter(i => i.code !== code);
+                saveData();
+                goBack();
             }
-         }
+        }
 
-         @Override
-         public void afterTextChanged(Editable s) {}
-      });
+        function renderMore(container) {
+            container.innerHTML = `
+                <div class="card">
+                    <h2>Eksport & Import CSV</h2>
+                    <p style="margin-bottom:10px;">Format CSV dikekalkan bersih tanpa masalah sel kosong atau garisan berabur.</p>
+                    <button class="btn btn-green" onclick="exportToCSV()">📊 Export Data ke CSV</button>
+                    <button class="btn btn-purple" onclick="triggerCSVImport()">📂 Import Fail CSV</button>
+                </div>
+            `;
+        }
 
-      this.content.addView(searchBox, new LinearLayout.LayoutParams(-1, -2));
-      Space sp = new Space(this);
-      this.content.addView(sp, new LinearLayout.LayoutParams(1, this.dp(8.0F)));
-   }
+        /* --- FUNGSI EKSPORT CSV --- */
+        function exportToCSV() {
+            let csvRows = [];
+            csvRows.push(["Lokasi / Tab", "Kod Peralatan", "Nama Peralatan"]);
 
-   void renderEquipment() {
-      this.base("Equipment List");
-      LabProfile activeLab = labProfiles.get(currentLab);
+            Object.keys(labProfiles).forEach(labName => {
+                let list = labProfiles[labName].equipmentList;
+                list.forEach(item => {
+                    csvRows.push([`"${labName}"`, `"${item.code}"`, `"${item.name}"`]);
+                });
+            });
 
-      LinearLayout itemsContainer = new LinearLayout(this);
-      itemsContainer.setOrientation(LinearLayout.VERTICAL);
+            let csvContent = "data:text/csv;charset=utf-8," + csvRows.map(e => e.join(",")).join("\n");
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", "Inventory_Lab_Report.csv");
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
 
-      this.renderSearchBar("Search Equipment Name...", (query) -> {
-         this.searchQuery = query;
-         this.populateEquipmentItems(itemsContainer, activeLab);
-      });
+        function triggerCSVImport() {
+            document.getElementById('file-input-csv').click();
+        }
 
-      this.content.addView(itemsContainer, new LinearLayout.LayoutParams(-1, -2));
-      this.populateEquipmentItems(itemsContainer, activeLab);
+        /* --- FUNGSI IMPORT CSV --- */
+        function handleCSVImport(e) {
+            let file = e.target.files[0];
+            if (!file) return;
 
-      Button add = this.btn("＋ Add Equipment", this.green);
-      this.content.addView(add);
-      add.setOnClickListener((v) -> {
-         this.currentEditingId = "";
-         this.tempSelectedImageUri = null;
-         this.navigateTo(ScreenState.EQUIPMENT_EDIT);
-      });
-   }
+            let reader = new FileReader();
+            reader.onload = function(evt) {
+                let lines = evt.target.result.split("\n");
+                let count = 0;
 
-   private void populateEquipmentItems(LinearLayout container, LabProfile activeLab) {
-      container.removeAllViews();
-      if (activeLab == null) return;
+                lines.forEach((line, index) => {
+                    if (index === 0 || !line.trim()) return; // Abaikan header
+                    let cols = line.split(",").map(c => c.replace(/"/g, "").trim());
+                    
+                    if (cols.length >= 3) {
+                        let labName = cols[0];
+                        let code = cols[1];
+                        let name = cols[2];
 
-      List<EquipmentItem> filteredList = new ArrayList<>();
-      for (EquipmentItem eq : activeLab.equipmentList) {
-         if (matchesQuery(eq.name, searchQuery) || matchesQuery(eq.code, searchQuery)) {
-            filteredList.add(eq);
-         }
-      }
-
-      this.renderSelectionBarInContainer(
-              container,
-              filteredList.size(),
-              allSelected -> {
-                 selectedItemIds.clear();
-                 if (allSelected) {
-                    for (EquipmentItem eq : filteredList) {
-                       selectedItemIds.add(eq.code);
+                        if (!labProfiles[labName]) {
+                            labProfiles[labName] = { equipmentList: [] };
+                        }
+                        
+                        // Elak duplicate
+                        if (!labProfiles[labName].equipmentList.some(i => i.code === code)) {
+                            labProfiles[labName].equipmentList.push({ code, name });
+                            count++;
+                        }
                     }
-                 }
-                 this.populateEquipmentItems(container, activeLab);
-              },
-              () -> {
-                 if (selectedItemIds.isEmpty()) {
-                    Toast.makeText(this, "Please select at least one item!", Toast.LENGTH_SHORT).show();
-                    return;
-                 }
-                 new AlertDialog.Builder(this)
-                         .setTitle("Confirm Deletion")
-                         .setMessage("Delete " + selectedItemIds.size() + " equipment item(s) from " + currentLab + "?")
-                         .setPositiveButton("Yes, Delete", (dialog, which) -> {
-                            activeLab.equipmentList.removeIf(eq -> selectedItemIds.contains(eq.code));
-                            this.addLog("Deleted " + selectedItemIds.size() + " equipment item(s) from " + currentLab);
-                            selectedItemIds.clear();
-                            this.saveData();
-                            Toast.makeText(this, "Selected items deleted successfully!", Toast.LENGTH_SHORT).show();
-                            this.populateEquipmentItems(container, activeLab);
-                         })
-                         .setNegativeButton("Cancel", null)
-                         .show();
-              }
-      );
-
-      for (EquipmentItem eq : filteredList) {
-         this.selectableCardInContainer(container, eq.code, eq.name, "", null, eq.code, (v) -> {
-            this.currentEditingId = eq.code;
-            this.navigateTo(ScreenState.EQUIPMENT_EDIT);
-         });
-      }
-   }
-
-   void renderEditEquipment(String code) {
-      this.base(code.isEmpty() ? "Add Equipment" : "Edit Equipment");
-      LabProfile activeLab = labProfiles.get(currentLab);
-      EquipmentItem targetItem = null;
-      if (activeLab != null) {
-         for(EquipmentItem item : activeLab.equipmentList) {
-            if (item.code.equalsIgnoreCase(code)) {
-               targetItem = item;
-               break;
-            }
-         }
-      }
-
-      EquipmentItem itemToEdit = targetItem;
-      if (this.tempSelectedImageUri == null) {
-         this.tempSelectedImageUri = targetItem != null ? targetItem.imageUri : null;
-      }
-
-      this.setupImageEditor();
-
-      // Separate Section 1: Stock List Number / Equipment Code
-      TextView stockCodeLabel = this.tv("📦 Stock List Number / Equipment Code:", this.tsBody, this.navy);
-      stockCodeLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      stockCodeLabel.setPadding(0, this.dp(6.0F), 0, this.dp(2.0F));
-      this.content.addView(stockCodeLabel);
-
-      EditText etCode = this.et("Enter Stock Code (e.g. ST/P103/2015/E001)");
-      if (itemToEdit != null) {
-         etCode.setText(itemToEdit.code);
-      }
-      this.content.addView(etCode);
-
-      Space sp1 = new Space(this);
-      this.content.addView(sp1, new LinearLayout.LayoutParams(1, this.dp(8.0F)));
-
-      // Separate Section 2: Equipment Name
-      TextView eqNameLabel = this.tv("⚙ Equipment Name:", this.tsBody, this.navy);
-      eqNameLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      eqNameLabel.setPadding(0, this.dp(6.0F), 0, this.dp(2.0F));
-      this.content.addView(eqNameLabel);
-
-      EditText etName = this.et("Enter Equipment Name (e.g. Governors Apparatus)");
-      if (itemToEdit != null) {
-         etName.setText(itemToEdit.name);
-      }
-      this.content.addView(etName);
-
-      Space sp = new Space(this);
-      this.content.addView(sp, new LinearLayout.LayoutParams(1, this.dp(12.0F)));
-
-      Button save = this.btn("💾 Save Equipment", this.green);
-      this.content.addView(save);
-      save.setOnClickListener((v) -> {
-         String newCode = etCode.getText().toString().trim();
-         String newName = etName.getText().toString().trim();
-         if (!newCode.isEmpty() && !newName.isEmpty()) {
-            if (itemToEdit != null) {
-               itemToEdit.code = newCode;
-               itemToEdit.name = newName;
-               itemToEdit.imageUri = this.tempSelectedImageUri;
-               this.addLog("Updated Equipment: " + newCode + " in " + currentLab);
-            } else if (activeLab != null) {
-               activeLab.equipmentList.add(new EquipmentItem(newCode, newName, this.tempSelectedImageUri));
-               this.addLog("Added Equipment: " + newCode + " (" + newName + ") in " + currentLab);
-            }
-
-            this.tempSelectedImageUri = null;
-            this.saveData();
-            Toast.makeText(this, "Saved Successfully!", Toast.LENGTH_SHORT).show();
-            this.onBackPressed();
-         } else {
-            Toast.makeText(this, "Enter Stock Code and Equipment Name!", Toast.LENGTH_SHORT).show();
-         }
-      });
-
-      if (itemToEdit != null) {
-         Space spDel = new Space(this);
-         this.content.addView(spDel, new LinearLayout.LayoutParams(1, this.dp(6.0F)));
-         Button deleteBtn = this.btn("❌ Delete Equipment", this.red);
-         this.content.addView(deleteBtn);
-         deleteBtn.setOnClickListener((v) -> {
-            if (activeLab != null) {
-               activeLab.equipmentList.remove(itemToEdit);
-            }
-
-            this.tempSelectedImageUri = null;
-            this.addLog("Deleted Equipment: " + itemToEdit.code + " in " + currentLab);
-            this.saveData();
-            Toast.makeText(this, "Equipment Removed", Toast.LENGTH_SHORT).show();
-            this.onBackPressed();
-         });
-      }
-   }
-
-   void renderTeaching() {
-      this.base("Teaching Materials");
-      LabProfile activeLab = labProfiles.get(currentLab);
-
-      LinearLayout itemsContainer = new LinearLayout(this);
-      itemsContainer.setOrientation(LinearLayout.VERTICAL);
-
-      this.renderSearchBar("Search Teaching Material Name...", (query) -> {
-         this.searchQuery = query;
-         this.populateTeachingItems(itemsContainer, activeLab);
-      });
-
-      this.content.addView(itemsContainer, new LinearLayout.LayoutParams(-1, -2));
-      this.populateTeachingItems(itemsContainer, activeLab);
-
-      Button add = this.btn("＋ Add Teaching Material Order", this.purple);
-      this.content.addView(add);
-      add.setOnClickListener((v) -> {
-         this.currentEditingId = "";
-         this.tempSelectedImageUri = null;
-         this.navigateTo(ScreenState.TEACHING_EDIT);
-      });
-   }
-
-   private void populateTeachingItems(LinearLayout container, LabProfile activeLab) {
-      container.removeAllViews();
-      if (activeLab == null) return;
-
-      List<TeachingItem> filteredList = new ArrayList<>();
-      for (TeachingItem item : activeLab.teachingList) {
-         if (matchesQuery(item.name, searchQuery)) {
-            filteredList.add(item);
-         }
-      }
-
-      this.renderSelectionBarInContainer(
-              container,
-              filteredList.size(),
-              allSelected -> {
-                 selectedItemIds.clear();
-                 if (allSelected) {
-                    for (TeachingItem item : filteredList) {
-                       selectedItemIds.add(item.id);
-                    }
-                 }
-                 this.populateTeachingItems(container, activeLab);
-              },
-              () -> {
-                 if (selectedItemIds.isEmpty()) {
-                    Toast.makeText(this, "Please select at least one teaching material!", Toast.LENGTH_SHORT).show();
-                    return;
-                 }
-                 new AlertDialog.Builder(this)
-                         .setTitle("Confirm Deletion")
-                         .setMessage("Delete " + selectedItemIds.size() + " teaching material item(s) from " + currentLab + "?")
-                         .setPositiveButton("Yes, Delete", (dialog, which) -> {
-                            activeLab.teachingList.removeIf(item -> selectedItemIds.contains(item.id));
-                            this.addLog("Deleted " + selectedItemIds.size() + " teaching material item(s) from " + currentLab);
-                            selectedItemIds.clear();
-                            this.saveData();
-                            Toast.makeText(this, "Selected items deleted successfully!", Toast.LENGTH_SHORT).show();
-                            this.populateTeachingItems(container, activeLab);
-                         })
-                         .setNegativeButton("Cancel", null)
-                         .show();
-              }
-      );
-
-      for (TeachingItem item : filteredList) {
-         this.selectableCardInContainer(container, item.id, item.name, "", null, item.id, (v) -> {
-            this.currentEditingId = item.id;
-            this.navigateTo(ScreenState.TEACHING_EDIT);
-         });
-      }
-   }
-
-   void renderEditTeaching(String id) {
-      this.base(id.isEmpty() ? "Add Teaching Material" : "Edit Teaching Material");
-      LabProfile activeLab = labProfiles.get(currentLab);
-      TeachingItem targetItem = null;
-      if (activeLab != null) {
-         for(TeachingItem item : activeLab.teachingList) {
-            if (item.id.equalsIgnoreCase(id)) {
-               targetItem = item;
-               break;
-            }
-         }
-      }
-
-      TeachingItem itemToEdit = targetItem;
-      if (this.tempSelectedImageUri == null) {
-         this.tempSelectedImageUri = targetItem != null ? targetItem.imageUri : null;
-      }
-
-      this.setupImageEditor();
-
-      // Separate Section 1: Item Name
-      TextView nameLabel = this.tv("📚 Teaching Material Item Name:", this.tsBody, this.navy);
-      nameLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      nameLabel.setPadding(0, this.dp(6.0F), 0, this.dp(2.0F));
-      this.content.addView(nameLabel);
-
-      EditText etName = this.et("Enter Item Name (e.g. Marker Pen / Dust Bin)");
-      if (itemToEdit != null) {
-         etName.setText(itemToEdit.name);
-      }
-      this.content.addView(etName);
-
-      Space sp1 = new Space(this);
-      this.content.addView(sp1, new LinearLayout.LayoutParams(1, this.dp(8.0F)));
-
-      // Separate Section 2: Quantity Unit
-      TextView qtyLabel = this.tv("🔢 Quantity / Unit:", this.tsBody, this.navy);
-      qtyLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      qtyLabel.setPadding(0, this.dp(6.0F), 0, this.dp(2.0F));
-      this.content.addView(qtyLabel);
-
-      EditText etQty = this.et("Enter Quantity Unit (e.g. 5 boxes / 2 units)");
-      if (itemToEdit != null) {
-         etQty.setText(itemToEdit.qtyUnit);
-      }
-      this.content.addView(etQty);
-
-      Space sp = new Space(this);
-      this.content.addView(sp, new LinearLayout.LayoutParams(1, this.dp(12.0F)));
-
-      Button save = this.btn("💾 Save Order Item", this.green);
-      this.content.addView(save);
-      save.setOnClickListener((v) -> {
-         String newName = etName.getText().toString().trim();
-         String newQty = etQty.getText().toString().trim();
-         if (!newName.isEmpty() && !newQty.isEmpty()) {
-            if (itemToEdit != null) {
-               itemToEdit.name = newName;
-               itemToEdit.qtyUnit = newQty;
-               itemToEdit.imageUri = this.tempSelectedImageUri;
-               this.addLog("Updated Teaching Order: " + newName + " in " + currentLab);
-            } else if (activeLab != null) {
-               String newId = "TM-" + System.currentTimeMillis();
-               activeLab.teachingList.add(new TeachingItem(newId, newName, newQty, this.tempSelectedImageUri));
-               this.addLog("Added Teaching Order: " + newName + " (" + newQty + ") in " + currentLab);
-            }
-
-            this.tempSelectedImageUri = null;
-            this.saveData();
-            Toast.makeText(this, "Saved Successfully!", Toast.LENGTH_SHORT).show();
-            this.onBackPressed();
-         } else {
-            Toast.makeText(this, "Enter Item Name and Quantity!", Toast.LENGTH_SHORT).show();
-         }
-      });
-
-      if (itemToEdit != null) {
-         Space spDel = new Space(this);
-         this.content.addView(spDel, new LinearLayout.LayoutParams(1, this.dp(6.0F)));
-         Button deleteBtn = this.btn("❌ Delete Item", this.red);
-         this.content.addView(deleteBtn);
-         deleteBtn.setOnClickListener((v) -> {
-            if (activeLab != null) {
-               activeLab.teachingList.remove(itemToEdit);
-            }
-
-            this.tempSelectedImageUri = null;
-            this.addLog("Deleted Teaching Order: " + itemToEdit.name + " in " + currentLab);
-            this.saveData();
-            Toast.makeText(this, "Item Removed", Toast.LENGTH_SHORT).show();
-            this.onBackPressed();
-         });
-      }
-   }
-
-   void renderFaulty() {
-      this.base("Faulty / Repair");
-      LabProfile activeLab = labProfiles.get(currentLab);
-
-      LinearLayout itemsContainer = new LinearLayout(this);
-      itemsContainer.setOrientation(LinearLayout.VERTICAL);
-
-      this.renderSearchBar("Search Faulty Asset Name...", (query) -> {
-         this.searchQuery = query;
-         this.populateFaultyItems(itemsContainer, activeLab);
-      });
-
-      this.content.addView(itemsContainer, new LinearLayout.LayoutParams(-1, -2));
-      this.populateFaultyItems(itemsContainer, activeLab);
-
-      Button b = this.btn("＋ Add Faulty Report", this.orange);
-      this.content.addView(b);
-      b.setOnClickListener((v) -> {
-         this.currentEditingId = "";
-         this.tempSelectedImageUri = null;
-         this.navigateTo(ScreenState.FAULTY_FORM);
-      });
-   }
-
-   private void populateFaultyItems(LinearLayout container, LabProfile activeLab) {
-      container.removeAllViews();
-      if (activeLab == null) return;
-
-      List<FaultyItem> filteredList = new ArrayList<>();
-      for (FaultyItem f : activeLab.faultyList) {
-         if (matchesQuery(f.name, searchQuery) || matchesQuery(f.stockCode, searchQuery)) {
-            filteredList.add(f);
-         }
-      }
-
-      this.renderSelectionBarInContainer(
-              container,
-              filteredList.size(),
-              allSelected -> {
-                 selectedItemIds.clear();
-                 if (allSelected) {
-                    for (FaultyItem f : filteredList) {
-                       selectedItemIds.add(f.id);
-                    }
-                 }
-                 this.populateFaultyItems(container, activeLab);
-              },
-              () -> {
-                 if (selectedItemIds.isEmpty()) {
-                    Toast.makeText(this, "Please select at least one faulty report!", Toast.LENGTH_SHORT).show();
-                    return;
-                 }
-                 new AlertDialog.Builder(this)
-                         .setTitle("Confirm Deletion")
-                         .setMessage("Delete " + selectedItemIds.size() + " faulty report(s) from " + currentLab + "?")
-                         .setPositiveButton("Yes, Delete", (dialog, which) -> {
-                            activeLab.faultyList.removeIf(f -> selectedItemIds.contains(f.id));
-                            this.addLog("Deleted " + selectedItemIds.size() + " faulty report(s) from " + currentLab);
-                            selectedItemIds.clear();
-                            this.saveData();
-                            Toast.makeText(this, "Faulty report(s) deleted successfully!", Toast.LENGTH_SHORT).show();
-                            this.populateFaultyItems(container, activeLab);
-                         })
-                         .setNegativeButton("Cancel", null)
-                         .show();
-              }
-      );
-
-      for (FaultyItem f : filteredList) {
-         this.selectableCardInContainer(container, f.id, f.name, "", null, f.id, (v) -> {
-            this.currentEditingId = f.id;
-            this.navigateTo(ScreenState.FAULTY_FORM);
-         });
-      }
-   }
-
-   void renderEditFaulty(String id) {
-      this.base(id.isEmpty() ? "Add Faulty Report" : "Edit Faulty Report");
-      LabProfile activeLab = labProfiles.get(currentLab);
-      FaultyItem targetItem = null;
-      if (activeLab != null) {
-         for(FaultyItem f : activeLab.faultyList) {
-            if (f.id.equalsIgnoreCase(id)) {
-               targetItem = f;
-               break;
-            }
-         }
-      }
-
-      FaultyItem itemToEdit = targetItem;
-      if (this.tempSelectedImageUri == null) {
-         this.tempSelectedImageUri = targetItem != null ? targetItem.imageUri : null;
-      }
-
-      this.setupImageEditor();
-
-      // Section 1: Stock List Number / Code
-      TextView stockLabel = this.tv("📦 Stock List Number / Equipment Code:", this.tsBody, this.navy);
-      stockLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      stockLabel.setPadding(0, this.dp(6.0F), 0, this.dp(2.0F));
-      this.content.addView(stockLabel);
-
-      EditText etStockCode = this.et("Enter Stock Code (e.g. ST/P103/2015/E001)");
-      if (itemToEdit != null && itemToEdit.stockCode != null) {
-         etStockCode.setText(itemToEdit.stockCode);
-      }
-      this.content.addView(etStockCode);
-
-      Space sp1 = new Space(this);
-      this.content.addView(sp1, new LinearLayout.LayoutParams(1, this.dp(6.0F)));
-
-      // Section 2: Equipment Name
-      TextView nameLabel = this.tv("⚙ Equipment Name:", this.tsBody, this.navy);
-      nameLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      nameLabel.setPadding(0, this.dp(6.0F), 0, this.dp(2.0F));
-      this.content.addView(nameLabel);
-
-      EditText etName = this.et("Enter Equipment Name (e.g. Lathe Machine)");
-      if (itemToEdit != null) {
-         etName.setText(itemToEdit.name);
-      }
-      this.content.addView(etName);
-
-      Space sp2 = new Space(this);
-      this.content.addView(sp2, new LinearLayout.LayoutParams(1, this.dp(6.0F)));
-
-      // Section 3: Known Issue / Problem Description
-      TextView problemLabel = this.tv("🔧 Known Issue / Problem Description:", this.tsBody, this.navy);
-      problemLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      problemLabel.setPadding(0, this.dp(6.0F), 0, this.dp(2.0F));
-      this.content.addView(problemLabel);
-
-      EditText etProblem = this.et("Describe Problem (e.g. Abnormal motor noise / Broken spindle)");
-      if (itemToEdit != null) {
-         etProblem.setText(itemToEdit.problem);
-      }
-      this.content.addView(etProblem);
-
-      Space sp3 = new Space(this);
-      this.content.addView(sp3, new LinearLayout.LayoutParams(1, this.dp(6.0F)));
-
-      // Section 4: Reported Date
-      TextView dateLabel = this.tv("📅 Reported Date:", this.tsBody, this.navy);
-      dateLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      dateLabel.setPadding(0, this.dp(6.0F), 0, this.dp(2.0F));
-      this.content.addView(dateLabel);
-
-      EditText etDate = this.et("Reported Date (e.g. " + (new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())).format(new Date()) + ")");
-      if (itemToEdit != null && itemToEdit.date != null && !itemToEdit.date.isEmpty()) {
-         etDate.setText(itemToEdit.date);
-      } else {
-         etDate.setText((new SimpleDateFormat("yyyy-MM-dd", Locale.getDefault())).format(new Date()));
-      }
-      this.content.addView(etDate);
-
-      Space sp4 = new Space(this);
-      this.content.addView(sp4, new LinearLayout.LayoutParams(1, this.dp(6.0F)));
-
-      // Section 5: Status Toggle / Dropdown
-      TextView statusLabel = this.tv("📌 Repair Status:", this.tsBody, this.navy);
-      statusLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      statusLabel.setPadding(0, this.dp(6.0F), 0, this.dp(2.0F));
-      this.content.addView(statusLabel);
-
-      Spinner statusSpinner = new Spinner(this);
-      String[] statusOptions = {"Pending Repair", "Repaired", "Returned"};
-      ArrayAdapter<String> statusAdapter = new ArrayAdapter<String>(this, android.R.layout.simple_spinner_item, statusOptions) {
-         public View getView(int position, View convertView, ViewGroup parent) {
-            TextView v = (TextView)super.getView(position, convertView, parent);
-            v.setTextColor(-16777216);
-            v.setBackgroundColor(-1);
-            v.setTextSize((float)MainActivity.this.tsBody);
-            v.setPadding(MainActivity.this.dp(8.0F), MainActivity.this.dp(8.0F), MainActivity.this.dp(8.0F), MainActivity.this.dp(8.0F));
-            return v;
-         }
-
-         public View getDropDownView(int position, View convertView, ViewGroup parent) {
-            TextView v = (TextView)super.getDropDownView(position, convertView, parent);
-            v.setTextColor(-16777216);
-            v.setBackgroundColor(-1);
-            v.setTextSize((float)MainActivity.this.tsBody);
-            v.setPadding(MainActivity.this.dp(12.0F), MainActivity.this.dp(10.0F), MainActivity.this.dp(12.0F), MainActivity.this.dp(10.0F));
-            return v;
-         }
-      };
-      statusSpinner.setAdapter(statusAdapter);
-
-      if (itemToEdit != null && itemToEdit.status != null) {
-         for (int i = 0; i < statusOptions.length; i++) {
-            if (statusOptions[i].equalsIgnoreCase(itemToEdit.status)) {
-               statusSpinner.setSelection(i);
-               break;
-            }
-         }
-      }
-      this.content.addView(statusSpinner, new LinearLayout.LayoutParams(-1, -2));
-
-      Space sp5 = new Space(this);
-      this.content.addView(sp5, new LinearLayout.LayoutParams(1, this.dp(6.0F)));
-
-      // Section 6: Additional Remarks / Repair Notes Space
-      TextView remarksLabel = this.tv("📝 Additional Remarks / Repair Notes:", this.tsBody, this.navy);
-      remarksLabel.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      remarksLabel.setPadding(0, this.dp(6.0F), 0, this.dp(2.0F));
-      this.content.addView(remarksLabel);
-
-      EditText etRemarks = this.et("Enter repair action details or reason why item cannot be repaired");
-      if (itemToEdit != null && itemToEdit.remarks != null) {
-         etRemarks.setText(itemToEdit.remarks);
-      }
-      this.content.addView(etRemarks);
-
-      Space sp6 = new Space(this);
-      this.content.addView(sp6, new LinearLayout.LayoutParams(1, this.dp(12.0F)));
-
-      Button saveBtn = this.btn("💾 Save Faulty Report", this.green);
-      this.content.addView(saveBtn);
-      saveBtn.setOnClickListener((v) -> {
-         String name = etName.getText().toString().trim();
-         String stockCode = etStockCode.getText().toString().trim();
-         String problem = etProblem.getText().toString().trim();
-         String date = etDate.getText().toString().trim();
-         String status = statusSpinner.getSelectedItem() != null ? statusSpinner.getSelectedItem().toString() : "Pending Repair";
-         String remarks = etRemarks.getText().toString().trim();
-
-         if (name.isEmpty()) {
-            Toast.makeText(this, "Enter Equipment Name!", Toast.LENGTH_SHORT).show();
-         } else {
-            if (itemToEdit != null) {
-               itemToEdit.stockCode = stockCode;
-               itemToEdit.name = name;
-               itemToEdit.problem = problem;
-               itemToEdit.date = date;
-               itemToEdit.status = status;
-               itemToEdit.remarks = remarks;
-               itemToEdit.imageUri = this.tempSelectedImageUri;
-               this.addLog("Updated Faulty Report for: " + name + " in " + currentLab);
-            } else if (activeLab != null) {
-               String newId = "F-" + (activeLab.faultyList.size() + 1);
-               activeLab.faultyList.add(new FaultyItem(newId, stockCode, name, problem, date, status, remarks, this.tempSelectedImageUri));
-               this.addLog("Created Faulty Report: " + name + " in " + currentLab);
-            }
-
-            this.tempSelectedImageUri = null;
-            this.saveData();
-            Toast.makeText(this, "Report Saved!", Toast.LENGTH_SHORT).show();
-            this.onBackPressed();
-         }
-      });
-
-      if (itemToEdit != null) {
-         Space spDel = new Space(this);
-         this.content.addView(spDel, new LinearLayout.LayoutParams(1, this.dp(6.0F)));
-         Button deleteBtn = this.btn("❌ Delete Report", this.red);
-         this.content.addView(deleteBtn);
-         deleteBtn.setOnClickListener((v) -> {
-            if (activeLab != null) {
-               activeLab.faultyList.remove(itemToEdit);
-            }
-
-            this.tempSelectedImageUri = null;
-            this.addLog("Deleted Faulty Report: " + itemToEdit.name + " in " + currentLab);
-            this.saveData();
-            Toast.makeText(this, "Report Removed", Toast.LENGTH_SHORT).show();
-            this.onBackPressed();
-         });
-      }
-   }
-
-   void renderWriteOff() {
-      this.base("Asset Write Off");
-      LabProfile activeLab = labProfiles.get(currentLab);
-
-      LinearLayout itemsContainer = new LinearLayout(this);
-      itemsContainer.setOrientation(LinearLayout.VERTICAL);
-
-      this.renderSearchBar("Search Write Off Asset Name...", (query) -> {
-         this.searchQuery = query;
-         this.populateWriteOffItems(itemsContainer, activeLab);
-      });
-
-      this.content.addView(itemsContainer, new LinearLayout.LayoutParams(-1, -2));
-      this.populateWriteOffItems(itemsContainer, activeLab);
-
-      Button b = this.btn("＋ Add Write Off Proposal", this.red);
-      this.content.addView(b);
-      b.setOnClickListener((v) -> {
-         this.currentEditingId = "";
-         this.tempSelectedImageUri = null;
-         this.navigateTo(ScreenState.WRITEOFF_FORM);
-      });
-   }
-
-   private void populateWriteOffItems(LinearLayout container, LabProfile activeLab) {
-      container.removeAllViews();
-      if (activeLab == null) return;
-
-      List<WriteOffItem> filteredList = new ArrayList<>();
-      for (WriteOffItem w : activeLab.writeOffList) {
-         if (matchesQuery(w.name, searchQuery)) {
-            filteredList.add(w);
-         }
-      }
-
-      this.renderSelectionBarInContainer(
-              container,
-              filteredList.size(),
-              allSelected -> {
-                 selectedItemIds.clear();
-                 if (allSelected) {
-                    for (WriteOffItem w : filteredList) {
-                       selectedItemIds.add(w.code);
-                    }
-                 }
-                 this.populateWriteOffItems(container, activeLab);
-              },
-              () -> {
-                 if (selectedItemIds.isEmpty()) {
-                    Toast.makeText(this, "Please select at least one write off proposal!", Toast.LENGTH_SHORT).show();
-                    return;
-                 }
-                 new AlertDialog.Builder(this)
-                         .setTitle("Confirm Deletion")
-                         .setMessage("Delete " + selectedItemIds.size() + " write off proposal(s) from " + currentLab + "?")
-                         .setPositiveButton("Yes, Delete", (dialog, which) -> {
-                            activeLab.writeOffList.removeIf(w -> selectedItemIds.contains(w.code));
-                            this.addLog("Deleted " + selectedItemIds.size() + " write off proposal(s) from " + currentLab);
-                            selectedItemIds.clear();
-                            this.saveData();
-                            Toast.makeText(this, "Write off proposal(s) deleted successfully!", Toast.LENGTH_SHORT).show();
-                            this.populateWriteOffItems(container, activeLab);
-                         })
-                         .setNegativeButton("Cancel", null)
-                         .show();
-              }
-      );
-
-      for (WriteOffItem w : filteredList) {
-         this.selectableCardInContainer(container, w.code, w.name, "", null, w.code, (v) -> {
-            this.currentEditingId = w.code;
-            this.navigateTo(ScreenState.WRITEOFF_FORM);
-         });
-      }
-   }
-
-   void renderEditWriteOff(String code) {
-      this.base(code.isEmpty() ? "Add Write Off" : "Edit Write Off");
-      LabProfile activeLab = labProfiles.get(currentLab);
-      WriteOffItem targetItem = null;
-      if (activeLab != null) {
-         for(WriteOffItem w : activeLab.writeOffList) {
-            if (w.code.equalsIgnoreCase(code)) {
-               targetItem = w;
-               break;
-            }
-         }
-      }
-
-      WriteOffItem itemToEdit = targetItem;
-      if (this.tempSelectedImageUri == null) {
-         this.tempSelectedImageUri = targetItem != null ? targetItem.imageUri : null;
-      }
-
-      this.setupImageEditor();
-      String[] labels = new String[]{"Asset Code (e.g. AST-001)", "Asset Name (e.g. Hydraulic Pump)", "Disposal Reason (e.g. Beyond repair)", "Status (e.g. Pending Approval)"};
-      List<EditText> editTexts = new ArrayList<>();
-
-      for(int i = 0; i < labels.length; ++i) {
-         EditText e = this.et(labels[i]);
-         if (itemToEdit != null) {
-            switch (i) {
-               case 0:
-                  e.setText(itemToEdit.code);
-                  break;
-               case 1:
-                  e.setText(itemToEdit.name);
-                  break;
-               case 2:
-                  e.setText(itemToEdit.reason);
-                  break;
-               case 3:
-                  e.setText(itemToEdit.status);
-            }
-         }
-
-         this.content.addView(e);
-         editTexts.add(e);
-      }
-
-      Space sp = new Space(this);
-      this.content.addView(sp, new LinearLayout.LayoutParams(1, this.dp(8.0F)));
-      Button b = this.btn("💾 Save Write Off Proposal", this.green);
-      this.content.addView(b);
-      b.setOnClickListener((v) -> {
-         String newCode = editTexts.get(0).getText().toString().trim();
-         String name = editTexts.get(1).getText().toString().trim();
-         if (!newCode.isEmpty() && !name.isEmpty()) {
-            if (itemToEdit != null) {
-               itemToEdit.code = newCode;
-               itemToEdit.name = name;
-               itemToEdit.reason = editTexts.get(2).getText().toString();
-               itemToEdit.status = editTexts.get(3).getText().toString();
-               itemToEdit.imageUri = this.tempSelectedImageUri;
-               this.addLog("Updated Write Off Proposal: " + newCode + " in " + currentLab);
-            } else if (activeLab != null) {
-               activeLab.writeOffList.add(new WriteOffItem(newCode, name, editTexts.get(2).getText().toString(), editTexts.get(3).getText().toString(), this.tempSelectedImageUri));
-               this.addLog("Created Write Off Proposal: " + newCode + " (" + name + ") in " + currentLab);
-            }
-
-            this.tempSelectedImageUri = null;
-            this.saveData();
-            Toast.makeText(this, "Proposal Saved!", Toast.LENGTH_SHORT).show();
-            this.onBackPressed();
-         } else {
-            Toast.makeText(this, "Enter Asset Code & Name!", Toast.LENGTH_SHORT).show();
-         }
-      });
-      if (itemToEdit != null) {
-         Space spDel = new Space(this);
-         this.content.addView(spDel, new LinearLayout.LayoutParams(1, this.dp(6.0F)));
-         Button deleteBtn = this.btn("❌ Delete Proposal", this.red);
-         this.content.addView(deleteBtn);
-         deleteBtn.setOnClickListener((v) -> {
-            if (activeLab != null) {
-               activeLab.writeOffList.remove(itemToEdit);
-            }
-
-            this.tempSelectedImageUri = null;
-            this.addLog("Deleted Write Off Proposal: " + itemToEdit.code + " in " + currentLab);
-            this.saveData();
-            Toast.makeText(this, "Proposal Removed", Toast.LENGTH_SHORT).show();
-            this.onBackPressed();
-         });
-      }
-   }
-
-   private interface SelectAllCallback {
-      void onSelectAllToggle(boolean selectAll);
-   }
-
-   private interface DeleteSelectedCallback {
-      void onDeleteSelected();
-   }
-
-   private void renderSelectionBarInContainer(LinearLayout container, int totalItemCount, SelectAllCallback selectAllCb, DeleteSelectedCallback deleteCb) {
-      LinearLayout bar = new LinearLayout(this);
-      bar.setOrientation(LinearLayout.HORIZONTAL);
-      bar.setGravity(16);
-      bar.setPadding(0, 0, 0, this.dp(8.0F));
-
-      CheckBox cbSelectAll = new CheckBox(this);
-      cbSelectAll.setText("Select All (" + selectedItemIds.size() + "/" + totalItemCount + ")");
-      cbSelectAll.setTextColor(this.navy);
-      cbSelectAll.setTextSize((float)this.tsBody);
-      cbSelectAll.setChecked(totalItemCount > 0 && selectedItemIds.size() == totalItemCount);
-
-      cbSelectAll.setOnCheckedChangeListener((buttonView, isChecked) -> {
-         if (buttonView.isPressed()) {
-            selectAllCb.onSelectAllToggle(isChecked);
-         }
-      });
-
-      Button btnDeleteSelected = this.btn("🗑 Delete (" + selectedItemIds.size() + ")", this.red);
-      btnDeleteSelected.setTextSize((float)this.tsSmall);
-
-      bar.addView(cbSelectAll, new LinearLayout.LayoutParams(0, -2, 1.0F));
-      bar.addView(btnDeleteSelected, new LinearLayout.LayoutParams(-2, this.dp(36.0F)));
-
-      btnDeleteSelected.setOnClickListener(v -> deleteCb.onDeleteSelected());
-
-      container.addView(bar);
-   }
-
-   void selectableCardInContainer(LinearLayout container, String itemId, String name, String sub, String imageUri, String editingId, View.OnClickListener click) {
-      LinearLayout row = new LinearLayout(this);
-      row.setOrientation(LinearLayout.HORIZONTAL);
-      row.setGravity(16);
-
-      GradientDrawable drawable = new GradientDrawable();
-      drawable.setShape(GradientDrawable.RECTANGLE);
-      drawable.setColor(this.cardBgColor);
-      drawable.setStroke(this.dp(1.5F), Color.rgb(180, 195, 210));
-      drawable.setCornerRadius(this.dp(6.0F));
-      row.setBackground(drawable);
-      row.setPadding(this.dp(8.0F), this.dp(8.0F), this.dp(10.0F), this.dp(8.0F));
-
-      CheckBox cb = new CheckBox(this);
-      cb.setChecked(selectedItemIds.contains(itemId));
-      cb.setOnCheckedChangeListener((buttonView, isChecked) -> {
-         if (isChecked) {
-            selectedItemIds.add(itemId);
-         } else {
-            selectedItemIds.remove(itemId);
-         }
-      });
-
-      LinearLayout textLayout = new LinearLayout(this);
-      textLayout.setOrientation(LinearLayout.VERTICAL);
-      textLayout.setPadding(this.dp(6.0F), 0, 0, 0);
-
-      TextView n = this.tv(name, this.tsHeader, this.textColorPrimary);
-      n.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      n.setPadding(0, 0, 0, this.dp(2.0F));
-      textLayout.addView(n);
-
-      if (sub != null && !sub.isEmpty()) {
-         TextView s = this.tv(sub, this.tsSmall, Color.rgb(70, 85, 100));
-         s.setPadding(0, 0, 0, 0);
-         textLayout.addView(s);
-      }
-
-      row.addView(cb, new LinearLayout.LayoutParams(-2, -2));
-      row.addView(textLayout, new LinearLayout.LayoutParams(0, -2, 1.0F));
-
-      if (imageUri != null && !imageUri.isEmpty() && !imageUri.equals("REMOVED")) {
-         ImageView thumb = new ImageView(this);
-         thumb.setScaleType(ImageView.ScaleType.CENTER_CROP);
-         try {
-            thumb.setImageURI(Uri.parse(imageUri));
-         } catch (Exception e) {
-            thumb.setImageResource(android.R.drawable.ic_menu_gallery);
-         }
-         LinearLayout.LayoutParams imgParams = new LinearLayout.LayoutParams(this.dp(46.0F), this.dp(46.0F));
-         imgParams.setMargins(this.dp(6.0F), 0, 0, 0);
-         row.addView(thumb, imgParams);
-      }
-
-      row.setOnClickListener(click);
-
-      container.addView(row, new LinearLayout.LayoutParams(-1, -2));
-      Space sp = new Space(this);
-      container.addView(sp, new LinearLayout.LayoutParams(1, this.dp(8.0F)));
-   }
-
-   private void setupImageEditor() {
-      this.currentEditingImageView = new ImageView(this);
-      this.currentEditingImageView.setAdjustViewBounds(true);
-      if (this.tempSelectedImageUri != null && !this.tempSelectedImageUri.equals("REMOVED")) {
-         try {
-            this.currentEditingImageView.setImageURI(Uri.parse(this.tempSelectedImageUri));
-         } catch (Exception var5) {
-            this.currentEditingImageView.setImageResource(android.R.color.transparent);
-         }
-      } else {
-         this.currentEditingImageView.setImageResource(android.R.color.transparent);
-      }
-
-      this.content.addView(this.currentEditingImageView, new LinearLayout.LayoutParams(-1, this.dp(140.0F)));
-      LinearLayout imgOps = new LinearLayout(this);
-      imgOps.setOrientation(LinearLayout.HORIZONTAL);
-      imgOps.setPadding(0, this.dp(4.0F), 0, this.dp(4.0F));
-
-      Button uploadImgBtn = this.btn("📷 Upload Image", this.blue);
-      uploadImgBtn.setTextSize((float)this.tsSmall);
-
-      Button removeBtn = this.btn("🗑 Remove", this.red);
-      removeBtn.setTextSize((float)this.tsSmall);
-
-      LinearLayout.LayoutParams btnParams = new LinearLayout.LayoutParams(0, this.dp(38.0F), 1.0F);
-      btnParams.setMargins(this.dp(2.0F), 0, this.dp(2.0F), 0);
-
-      imgOps.addView(uploadImgBtn, btnParams);
-      imgOps.addView(removeBtn, btnParams);
-      this.content.addView(imgOps);
-
-      uploadImgBtn.setOnClickListener((v) -> this.showImageSourceToggleDialog());
-      removeBtn.setOnClickListener((v) -> {
-         this.currentEditingImageView.setImageResource(android.R.color.transparent);
-         this.tempSelectedImageUri = "REMOVED";
-         Toast.makeText(this, "Image Removed", Toast.LENGTH_SHORT).show();
-      });
-   }
-
-   private void showImageSourceToggleDialog() {
-      String[] options = {"📸 Direct Capture from Camera", "📁 Select Image from File"};
-      AlertDialog.Builder builder = new AlertDialog.Builder(this);
-      builder.setTitle("Upload Image Option");
-      builder.setItems(options, (dialog, which) -> {
-         if (which == 0) {
-            this.checkCameraPermissionAndLaunch();
-         } else if (which == 1) {
-            Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-            intent.addCategory(Intent.CATEGORY_OPENABLE);
-            intent.setType("image/*");
-            this.startActivityForResult(intent, RC_PICK_IMAGE);
-         }
-      });
-      builder.show();
-   }
-
-   private void checkCameraPermissionAndLaunch() {
-      if (VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-         if (ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.CAMERA}, RC_CAMERA_PERMISSION);
-            return;
-         }
-      }
-      launchCameraCapture();
-   }
-
-   @Override
-   public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-      super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-      if (requestCode == RC_CAMERA_PERMISSION) {
-         if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-            launchCameraCapture();
-         } else {
-            Toast.makeText(this, "Camera permission is required to capture photos!", Toast.LENGTH_SHORT).show();
-         }
-      }
-   }
-
-   private void launchCameraCapture() {
-      try {
-         File picturesDir = this.getExternalFilesDir(Environment.DIRECTORY_PICTURES);
-         if (picturesDir != null && !picturesDir.exists()) {
-            picturesDir.mkdirs();
-         }
-         File photoFile = new File(picturesDir, "CAPTURED_" + System.currentTimeMillis() + ".jpg");
-         Uri photoUri = FileProvider.getUriForFile(this, this.getPackageName() + ".fileprovider", photoFile);
-         this.currentCameraPhotoUri = photoUri;
-
-         Intent cameraIntent = new Intent(MediaStore.ACTION_IMAGE_CAPTURE);
-         cameraIntent.putExtra(MediaStore.EXTRA_OUTPUT, photoUri);
-         cameraIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION | Intent.FLAG_GRANT_WRITE_URI_PERMISSION);
-
-         List<ResolveInfo> resInfoList = getPackageManager().queryIntentActivities(cameraIntent, PackageManager.MATCH_DEFAULT_ONLY);
-         for (ResolveInfo resolveInfo : resInfoList) {
-            String packageName = resolveInfo.activityInfo.packageName;
-            grantUriPermission(packageName, photoUri, Intent.FLAG_GRANT_WRITE_URI_PERMISSION | Intent.FLAG_GRANT_READ_URI_PERMISSION);
-         }
-
-         if (cameraIntent.resolveActivity(getPackageManager()) != null || !resInfoList.isEmpty()) {
-            this.startActivityForResult(cameraIntent, RC_CAPTURE_CAMERA);
-         } else {
-            Toast.makeText(this, "No camera application available on device!", Toast.LENGTH_SHORT).show();
-         }
-      } catch (Exception e) {
-         e.printStackTrace();
-         Toast.makeText(this, "Camera Launch Error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-      }
-   }
-
-   void renderLogs() {
-      this.base("Activity Logs");
-      TextView logTitle = this.tv("📋 Historical Change History", this.tsHeader, this.navy);
-      logTitle.setTypeface(Typeface.DEFAULT, Typeface.BOLD);
-      this.content.addView(logTitle);
-      if (activityLogs.isEmpty()) {
-         this.content.addView(this.tv("No activity logs recorded yet.", this.tsBody, -7829368));
-      } else {
-         for(String log : activityLogs) {
-            LinearLayout cardLog = new LinearLayout(this);
-            cardLog.setOrientation(LinearLayout.VERTICAL);
-            cardLog.setPadding(this.dp(8.0F), this.dp(8.0F), this.dp(8.0F), this.dp(8.0F));
-            cardLog.setBackgroundColor(-1);
-            TextView tvLog = this.tv(log, this.tsSmall, -16777216);
-            cardLog.addView(tvLog);
-            this.content.addView(cardLog, new LinearLayout.LayoutParams(-1, -2));
-            Space sp = new Space(this);
-            this.content.addView(sp, new LinearLayout.LayoutParams(1, this.dp(4.0F)));
-         }
-      }
-   }
-
-   void renderMore() {
-      this.base("More Options");
-      this.content.addView(this.tv("App Information & Updates", this.tsHeader, this.navy));
-      TextView versionTv = this.tv("Installed Version: v" + this.APP_VERSION_NAME + " (Build " + this.APP_VERSION_CODE + ")", this.tsBody, -12303292);
-      this.content.addView(versionTv);
-      Button updateBtn = this.btn("🔄 Check for Updates (OTA)", this.blue);
-      this.content.addView(updateBtn);
-      updateBtn.setOnClickListener((v) -> this.checkForAppUpdate());
-      Button logsBtn = this.btn("📜 View Activity Logs", this.purple);
-      this.content.addView(logsBtn);
-      logsBtn.setOnClickListener((v) -> this.navigateTo(ScreenState.LOGS));
-
-      Space spVersion = new Space(this);
-      this.content.addView(spVersion, new LinearLayout.LayoutParams(1, this.dp(14.0F)));
-      this.content.addView(this.tv("Google Account Authentication", this.tsHeader, this.navy));
-      this.signInStatusTv = this.tv("Status: Checking login...", this.tsBody, -12303292);
-      this.content.addView(this.signInStatusTv);
-
-      Button signInBtn = this.btn("🔑 Sign In / Account Authentication", this.orange);
-      this.content.addView(signInBtn);
-
-      GoogleSignInAccount account = GoogleSignIn.getLastSignedInAccount(this);
-      if (account != null) {
-         this.signInStatusTv.setText("Status: Signed in as " + account.getEmail());
-      } else {
-         this.signInStatusTv.setText("Status: Not signed in");
-      }
-
-      signInBtn.setOnClickListener((v) -> {
-         this.mGoogleSignInClient.signOut().addOnCompleteListener(task -> {
-            Intent signInIntent = this.mGoogleSignInClient.getSignInIntent();
-            this.startActivityForResult(signInIntent, RC_SIGN_IN);
-         });
-      });
-
-      Space spExport = new Space(this);
-      this.content.addView(spExport, new LinearLayout.LayoutParams(1, this.dp(14.0F)));
-      this.content.addView(this.tv("Data Import & Export", this.tsHeader, this.navy));
-
-      Button openFileBtn = this.btn("📂 Open / Import CSV File (Drive / Local)", this.blue);
-      this.content.addView(openFileBtn);
-      openFileBtn.setOnClickListener((v) -> this.importCSVFromDriveOrLocal());
-
-      Space spBtnGap = new Space(this);
-      this.content.addView(spBtnGap, new LinearLayout.LayoutParams(1, this.dp(8.0F)));
-
-      Button exportBtn = this.btn("📊 Export & Save Data to CSV (Drive / Local)", this.green);
-      this.content.addView(exportBtn);
-      exportBtn.setOnClickListener((v) -> this.exportCSVToDriveOrLocal());
-   }
-
-   private void checkForAppUpdate() {
-      ProgressDialog pd = new ProgressDialog(this);
-      pd.setMessage("Checking for updates...");
-      pd.show();
-      new Handler(Looper.getMainLooper()).postDelayed(() -> {
-         pd.dismiss();
-         int latestServerVersionCode = 4;
-         if (latestServerVersionCode > this.APP_VERSION_CODE) {
-            new AlertDialog.Builder(this)
-                    .setTitle("New Update Found!")
-                    .setMessage("A new version (v1.3.0) is available. Would you like to update now?\n\nYour inventory data will remain safe.")
-                    .setPositiveButton("Download Update", (dialog, which) -> {
-                       String fileId = "1RXdumxDLudf7dbBaiaUIAUe60ntkMD1J";
-                       String apkUrl = "https://drive.google.com/uc?export=download&id=" + fileId;
-                       final String fileName = "MechanicalLab_v1.3.0.apk";
-
-                       try {
-                          DownloadManager.Request request = new DownloadManager.Request(Uri.parse(apkUrl));
-                          request.setTitle("Mechanical Lab Update");
-                          request.setDescription("Downloading new APK update...");
-                          request.setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED);
-                          request.setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName);
-                          DownloadManager manager = (DownloadManager) this.getSystemService(Context.DOWNLOAD_SERVICE);
-                          if (manager != null) {
-                             final long downloadId = manager.enqueue(request);
-                             Toast.makeText(this, "Download started... Installer will open automatically!", Toast.LENGTH_LONG).show();
-                             BroadcastReceiver onComplete = new BroadcastReceiver() {
-                                @Override
-                                public void onReceive(Context context, Intent intent) {
-                                   long id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L);
-                                   if (downloadId == id) {
-                                      File apkFile = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS), fileName);
-                                      if (apkFile.exists()) {
-                                         Uri apkUri = FileProvider.getUriForFile(MainActivity.this, MainActivity.this.getPackageName() + ".fileprovider", apkFile);
-                                         Intent installIntent = new Intent(Intent.ACTION_VIEW);
-                                         installIntent.setDataAndType(apkUri, "application/vnd.android.package-archive");
-                                         installIntent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
-                                         installIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-                                         MainActivity.this.startActivity(installIntent);
-                                      }
-
-                                      MainActivity.this.unregisterReceiver(this);
-                                   }
-                                }
-                             };
-                             ContextCompat.registerReceiver(this, onComplete, new IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE), ContextCompat.RECEIVER_EXPORTED);
-                          }
-                       } catch (Exception e) {
-                          Toast.makeText(this, "Download failed: " + e.getMessage(), Toast.LENGTH_SHORT).show();
-                       }
-                    })
-                    .setNegativeButton("Later", null)
-                    .show();
-         } else {
-            Toast.makeText(this, "Your app is already up to date (v" + this.APP_VERSION_NAME + ")!", Toast.LENGTH_LONG).show();
-         }
-      }, 1500L);
-   }
-
-   public void importCSVFromDriveOrLocal() {
-      Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT);
-      intent.addCategory(Intent.CATEGORY_OPENABLE);
-      intent.setType("*/*");
-      String[] mimeTypes = {"text/csv", "text/comma-separated-values", "application/csv", "text/plain"};
-      intent.putExtra(Intent.EXTRA_MIME_TYPES, mimeTypes);
-      this.startActivityForResult(intent, RC_PICK_CSV_FILE);
-   }
-
-   public void exportCSVToDriveOrLocal() {
-      if (!currentLab.isEmpty() && labProfiles.containsKey(currentLab)) {
-         String defaultFileName = "LabReport_" + currentLab.replaceAll("\\s+", "_") + ".csv";
-         Intent intent = new Intent(Intent.ACTION_CREATE_DOCUMENT);
-         intent.addCategory(Intent.CATEGORY_OPENABLE);
-         intent.setType("text/csv");
-         intent.putExtra(Intent.EXTRA_TITLE, defaultFileName);
-         this.startActivityForResult(intent, RC_CREATE_CSV_FILE);
-      } else {
-         Toast.makeText(this, "Please select or create a lab profile first!", Toast.LENGTH_SHORT).show();
-      }
-   }
-
-   private void exportCSVToUri(Uri uri) {
-      if (currentLab.isEmpty() || !labProfiles.containsKey(currentLab)) {
-         Toast.makeText(this, "No active lab profile found to export!", Toast.LENGTH_SHORT).show();
-         return;
-      }
-
-      try (OutputStream outputStream = getContentResolver().openOutputStream(uri)) {
-         if (outputStream != null) {
-            String csvData = generateCSVContent();
-            outputStream.write(csvData.getBytes(StandardCharsets.UTF_8));
-            Toast.makeText(this, "Successfully exported CSV file!", Toast.LENGTH_LONG).show();
-            addLog("Exported CSV data for " + currentLab + " to " + uri.getPath());
-         }
-      } catch (Exception e) {
-         e.printStackTrace();
-         Toast.makeText(this, "Export failed: " + e.getMessage(), Toast.LENGTH_LONG).show();
-      }
-   }
-
-   private String generateCSVContent() {
-      LabProfile activeProfile = labProfiles.get(currentLab);
-      if (activeProfile == null) {
-         return "";
-      }
-
-      StringBuilder csv = new StringBuilder();
-      csv.append("Lab Location,\"").append(currentLab).append("\"\n");
-      csv.append("Generated Date,\"").append((new SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault())).format(new Date())).append("\"\n\n");
-
-      // SECTION 1: EQUIPMENT LIST
-      csv.append("---------------------------------------------------------------------------------\n");
-      csv.append("SECTION 1: EQUIPMENT LIST\n");
-      csv.append("---------------------------------------------------------------------------------\n");
-      csv.append("No.,Equipment Code,Equipment Name\n");
-      int eqCount = 1;
-      for (EquipmentItem eq : activeProfile.equipmentList) {
-         csv.append(eqCount++).append(",")
-                 .append(escapeCSV(eq.code)).append(",")
-                 .append(escapeCSV(eq.name)).append("\n");
-      }
-      if (activeProfile.equipmentList.isEmpty()) {
-         csv.append("- No Equipment Items -,\n");
-      }
-      csv.append("\n\n");
-
-      // SECTION 2: TEACHING MATERIALS ORDER
-      csv.append("---------------------------------------------------------------------------------\n");
-      csv.append("SECTION 2: TEACHING MATERIALS ORDER\n");
-      csv.append("---------------------------------------------------------------------------------\n");
-      csv.append("No.,Item Name,Quantity Unit\n");
-      int tmCount = 1;
-      for (TeachingItem tm : activeProfile.teachingList) {
-         csv.append(tmCount++).append(",")
-                 .append(escapeCSV(tm.name)).append(",")
-                 .append(escapeCSV(tm.qtyUnit)).append("\n");
-      }
-      if (activeProfile.teachingList.isEmpty()) {
-         csv.append("- No Teaching Materials Order -,\n");
-      }
-      csv.append("\n\n");
-
-      // SECTION 3: FAULTY / REPAIR REPORTS
-      csv.append("---------------------------------------------------------------------------------\n");
-      csv.append("SECTION 3: FAULTY / REPAIR REPORTS\n");
-      csv.append("---------------------------------------------------------------------------------\n");
-      csv.append("Report ID,Stock Code,Asset Name,Problem Description,Reported Date,Status,Remarks\n");
-      for (FaultyItem f : activeProfile.faultyList) {
-         csv.append(escapeCSV(f.id)).append(",")
-                 .append(escapeCSV(f.stockCode != null ? f.stockCode : "")).append(",")
-                 .append(escapeCSV(f.name)).append(",")
-                 .append(escapeCSV(f.problem)).append(",")
-                 .append(escapeCSV(f.date)).append(",")
-                 .append(escapeCSV(f.status != null ? f.status : "Pending Repair")).append(",")
-                 .append(escapeCSV(f.remarks != null ? f.remarks : "")).append("\n");
-      }
-      if (activeProfile.faultyList.isEmpty()) {
-         csv.append("- No Faulty Reports -,,,,,,\n");
-      }
-      csv.append("\n\n");
-
-      // SECTION 4: ASSET WRITE OFF PROPOSALS
-      csv.append("---------------------------------------------------------------------------------\n");
-      csv.append("SECTION 4: ASSET WRITE OFF PROPOSALS\n");
-      csv.append("---------------------------------------------------------------------------------\n");
-      csv.append("Asset Code,Asset Name,Disposal Reason,Status\n");
-      for (WriteOffItem w : activeProfile.writeOffList) {
-         csv.append(escapeCSV(w.code)).append(",")
-                 .append(escapeCSV(w.name)).append(",")
-                 .append(escapeCSV(w.reason)).append(",")
-                 .append(escapeCSV(w.status != null ? w.status : "Pending Approval")).append("\n");
-      }
-      if (activeProfile.writeOffList.isEmpty()) {
-         csv.append("- No Asset Write Off Proposals -,,,\n");
-      }
-
-      return csv.toString();
-   }
-
-   private String escapeCSV(String field) {
-      if (field == null) {
-         return "";
-      }
-      if (field.contains(",") || field.contains("\"") || field.contains("\n")) {
-         return "\"" + field.replace("\"", "\"\"") + "\"";
-      }
-      return field;
-   }
-
-   // --- STRICT ISOLATED CSV IMPORT LOGIC ---
-   private void importCSVData(Uri csvUri) {
-      int importedCount = 0;
-
-      try {
-         List<String> lines = new ArrayList<>();
-         String fileLabLocation = "";
-         String currentSection = "";
-
-         try (
-                 InputStream inputStream = getContentResolver().openInputStream(csvUri);
-                 BufferedReader reader = new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))
-         ) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-               lines.add(line);
-
-               if (line.startsWith("Lab Location,")) {
-                  String[] parts = line.split(",", 2);
-                  if (parts.length > 1) {
-                     fileLabLocation = parts[1].trim().replace("\"", "");
-                  }
-               }
-            }
-         }
-
-         if (!fileLabLocation.isEmpty()) {
-            currentLab = fileLabLocation;
-         }
-
-         if (currentLab.isEmpty()) {
-            currentLab = "Default Lab";
-         }
-
-         if (!labProfiles.containsKey(currentLab)) {
-            labProfiles.put(currentLab, new LabProfile(currentLab));
-         }
-
-         LabProfile activeProfile = labProfiles.get(currentLab);
-         if (activeProfile != null) {
-            activeProfile.equipmentList.clear();
-            activeProfile.teachingList.clear();
-            activeProfile.faultyList.clear();
-            activeProfile.writeOffList.clear();
-         } else {
-            activeProfile = new LabProfile(currentLab);
-            labProfiles.put(currentLab, activeProfile);
-         }
-
-         for (String singleLine : lines) {
-            String trimmedLine = singleLine.trim();
-
-            if (trimmedLine.isEmpty()) continue;
-
-            if (trimmedLine.contains("SECTION 1: EQUIPMENT LIST") || trimmedLine.contains("--- EQUIPMENT LIST ---")) {
-               currentSection = "EQUIPMENT";
-               continue;
-            } else if (trimmedLine.contains("SECTION 2: TEACHING MATERIALS ORDER") || trimmedLine.contains("--- TEACHING MATERIALS ORDER ---")) {
-               currentSection = "TEACHING";
-               continue;
-            } else if (trimmedLine.contains("SECTION 3: FAULTY / REPAIR REPORTS") || trimmedLine.contains("--- FAULTY / REPAIR REPORTS ---")) {
-               currentSection = "FAULTY";
-               continue;
-            } else if (trimmedLine.contains("SECTION 4: ASSET WRITE OFF PROPOSALS") || trimmedLine.contains("--- ASSET WRITE OFF PROPOSALS ---")) {
-               currentSection = "WRITEOFF";
-               continue;
-            }
-
-            if (trimmedLine.startsWith("No.,") || trimmedLine.startsWith("Equipment Code,")
-                    || trimmedLine.startsWith("Report ID,") || trimmedLine.startsWith("Asset Code,")) {
-               continue;
-            }
-
-            List<String> tokens = parseCSVLine(trimmedLine);
-            if (tokens.isEmpty()) continue;
-
-            if ("EQUIPMENT".equals(currentSection) && tokens.size() >= 2) {
-               String code = (tokens.size() > 2 && tokens.get(0).length() <= 3) ? tokens.get(1) : tokens.get(0);
-               String name = (tokens.size() > 2 && tokens.get(0).length() <= 3) ? tokens.get(2) : tokens.get(1);
-               String imgUri = tokens.size() >= 4 ? tokens.get(3) : null;
-               if (imgUri != null && imgUri.trim().isEmpty()) imgUri = null;
-
-               if (!code.trim().isEmpty() && !name.trim().isEmpty() && !code.contains("No Equipment Items")) {
-                  boolean exists = false;
-                  for (EquipmentItem eq : activeProfile.equipmentList) {
-                     if (eq.code.equalsIgnoreCase(code)) {
-                        exists = true;
-                        break;
-                     }
-                  }
-                  if (!exists) {
-                     activeProfile.equipmentList.add(new EquipmentItem(code, name, imgUri));
-                     importedCount++;
-                  }
-               }
-            } else if ("TEACHING".equals(currentSection) && tokens.size() >= 2) {
-               String name = tokens.get(0).isEmpty() && tokens.size() > 2 ? tokens.get(1) : tokens.get(0);
-               String qty = tokens.get(0).isEmpty() && tokens.size() > 2 ? tokens.get(2) : tokens.get(1);
-               String imgUri = (tokens.get(0).isEmpty() && tokens.size() > 3) ? tokens.get(3) : (tokens.size() >= 3 ? tokens.get(2) : null);
-               if (imgUri != null && imgUri.trim().isEmpty()) imgUri = null;
-
-               if (!name.trim().isEmpty() && !name.contains("No Teaching Materials")) {
-                  String id = "TM-" + System.currentTimeMillis() + "-" + importedCount;
-                  activeProfile.teachingList.add(new TeachingItem(id, name, qty, imgUri));
-                  importedCount++;
-               }
-            } else if ("FAULTY".equals(currentSection) && tokens.size() >= 4) {
-               String id = tokens.get(0);
-               String stockCode = "";
-               String name = "";
-               String problem = "";
-               String date = "";
-               String status = "Pending Repair";
-               String remarks = "";
-
-               if (tokens.size() >= 7) {
-                  stockCode = tokens.get(1);
-                  name = tokens.get(2);
-                  problem = tokens.get(3);
-                  date = tokens.get(4);
-                  status = tokens.get(5);
-                  remarks = tokens.get(6);
-               } else {
-                  name = tokens.get(1);
-                  problem = tokens.get(2);
-                  date = tokens.get(3);
-                  if (tokens.size() > 4) status = tokens.get(4);
-                  if (tokens.size() > 5) remarks = tokens.get(5);
-               }
-
-               if (!id.contains("No Faulty Reports")) {
-                  activeProfile.faultyList.add(new FaultyItem(id, stockCode, name, problem, date, status, remarks, null));
-                  importedCount++;
-               }
-            } else if ("WRITEOFF".equals(currentSection) && tokens.size() >= 3) {
-               String code = tokens.get(0);
-               String name = tokens.get(1);
-               String reason = tokens.get(2);
-               String status = tokens.size() > 3 ? tokens.get(3) : "Pending Approval";
-               String imgUri = tokens.size() >= 5 ? tokens.get(4) : null;
-               if (imgUri != null && imgUri.trim().isEmpty()) imgUri = null;
-
-               if (!code.contains("No Asset Write Off")) {
-                  activeProfile.writeOffList.add(new WriteOffItem(code, name, reason, status, imgUri));
-                  importedCount++;
-               }
-            }
-         }
-
-         this.saveData();
-         this.addLog("Imported " + importedCount + " record(s) into " + currentLab);
-         Toast.makeText(this, "Successfully imported " + importedCount + " record(s) into " + currentLab + "!", Toast.LENGTH_LONG).show();
-         this.renderScreen(ScreenState.HOME);
-
-      } catch (Exception e) {
-         e.printStackTrace();
-         Toast.makeText(this, "Failed to import CSV: " + e.getMessage(), Toast.LENGTH_LONG).show();
-      }
-   }
-
-   private List<String> parseCSVLine(String line) {
-      List<String> result = new ArrayList<>();
-      boolean inQuotes = false;
-      StringBuilder sb = new StringBuilder();
-      for (int i = 0; i < line.length(); i++) {
-         char c = line.charAt(i);
-         if (c == '\"') {
-            inQuotes = !inQuotes;
-         } else if (c == ',' && !inQuotes) {
-            result.add(sb.toString().trim());
-            sb.setLength(0);
-         } else {
-            sb.append(c);
-         }
-      }
-      result.add(sb.toString().trim());
-      return result;
-   }
-
-   @Override
-   public void onActivityResult(int requestCode, int resultCode, Intent data) {
-      super.onActivityResult(requestCode, resultCode, data);
-      if (requestCode == RC_SIGN_IN) {
-         Task<GoogleSignInAccount> task = GoogleSignIn.getSignedInAccountFromIntent(data);
-         this.handleSignInResult(task);
-      } else if (requestCode == RC_PICK_IMAGE && resultCode == RESULT_OK && data != null) {
-         Uri imageUri = data.getData();
-         if (imageUri != null) {
-            try {
-               this.getContentResolver().takePersistableUriPermission(imageUri, Intent.FLAG_GRANT_READ_URI_PERMISSION);
-            } catch (Exception e) {
-               e.printStackTrace();
-            }
-
-            this.tempSelectedImageUri = imageUri.toString();
-            if (this.currentEditingImageView != null) {
-               this.currentEditingImageView.setImageURI(imageUri);
-            }
-
-            Toast.makeText(this, "Image Selected!", Toast.LENGTH_SHORT).show();
-         }
-      } else if (requestCode == RC_CAPTURE_CAMERA && resultCode == RESULT_OK) {
-         if (this.currentCameraPhotoUri != null) {
-            this.tempSelectedImageUri = this.currentCameraPhotoUri.toString();
-            if (this.currentEditingImageView != null) {
-               this.currentEditingImageView.setImageURI(this.currentCameraPhotoUri);
-            }
-            Toast.makeText(this, "Photo Captured!", Toast.LENGTH_SHORT).show();
-         }
-      } else if (requestCode == RC_PICK_CSV_FILE && resultCode == RESULT_OK && data != null) {
-         Uri csvUri = data.getData();
-         if (csvUri != null) {
-            this.importCSVData(csvUri);
-         }
-      } else if (requestCode == RC_CREATE_CSV_FILE && resultCode == RESULT_OK && data != null) {
-         Uri csvUri = data.getData();
-         if (csvUri != null) {
-            this.exportCSVToUri(csvUri);
-         }
-      }
-   }
-
-   private void handleSignInResult(Task<GoogleSignInAccount> completedTask) {
-      try {
-         GoogleSignInAccount account = completedTask.getResult(ApiException.class);
-         if (account != null && this.signInStatusTv != null) {
-            this.signInStatusTv.setText("Status: Signed in as " + account.getEmail());
-            this.addLog("Logged in via Google Sign-In as: " + account.getEmail());
-            Toast.makeText(this, "Sign-in successful!", Toast.LENGTH_SHORT).show();
-            this.navigateTo(ScreenState.MORE);
-         }
-      } catch (ApiException e) {
-         Toast.makeText(this, "Sign In Failed Code: " + e.getStatusCode(), Toast.LENGTH_SHORT).show();
-      }
-   }
-
-   private static enum ScreenState {
-      HOME,
-      TEACHING_LIST,
-      TEACHING_EDIT,
-      EQUIPMENT_LIST,
-      EQUIPMENT_EDIT,
-      FAULTY_LIST,
-      FAULTY_FORM,
-      WRITEOFF_LIST,
-      WRITEOFF_FORM,
-      MORE,
-      LOGS;
-
-      private static ScreenState[] $values() {
-         return new ScreenState[]{HOME, TEACHING_LIST, TEACHING_EDIT, EQUIPMENT_LIST, EQUIPMENT_EDIT, FAULTY_LIST, FAULTY_FORM, WRITEOFF_LIST, WRITEOFF_FORM, MORE, LOGS};
-      }
-   }
-
-   static class TeachingItem {
-      String id;
-      String name;
-      String qtyUnit;
-      String imageUri;
-
-      TeachingItem(String id, String name, String qtyUnit, String imageUri) {
-         this.id = id;
-         this.name = name;
-         this.qtyUnit = qtyUnit;
-         this.imageUri = imageUri;
-      }
-   }
-
-   static class EquipmentItem {
-      String code;
-      String name;
-      String imageUri;
-
-      EquipmentItem(String code, String name, String imageUri) {
-         this.code = code;
-         this.name = name;
-         this.imageUri = imageUri;
-      }
-   }
-
-   static class FaultyItem {
-      String id;
-      String stockCode;
-      String name;
-      String problem;
-      String date;
-      String status;
-      String remarks;
-      String imageUri;
-
-      FaultyItem(String id, String name, String problem, String date, String status, String imageUri) {
-         this(id, "", name, problem, date, status, "", imageUri);
-      }
-
-      FaultyItem(String id, String stockCode, String name, String problem, String date, String status, String remarks, String imageUri) {
-         this.id = id;
-         this.stockCode = stockCode;
-         this.name = name;
-         this.problem = problem;
-         this.date = date;
-         this.status = status;
-         this.remarks = remarks;
-         this.imageUri = imageUri;
-      }
-   }
-
-   static class WriteOffItem {
-      String code;
-      String name;
-      String reason;
-      String status;
-      String imageUri;
-
-      WriteOffItem(String code, String name, String reason, String status, String imageUri) {
-         this.code = code;
-         this.name = name;
-         this.reason = reason;
-         this.status = status;
-         this.imageUri = imageUri;
-      }
-   }
-
-   static class LabProfile {
-      String labName;
-      List<TeachingItem> teachingList = new ArrayList<>();
-      List<EquipmentItem> equipmentList = new ArrayList<>();
-      List<FaultyItem> faultyList = new ArrayList<>();
-      List<WriteOffItem> writeOffList = new ArrayList<>();
-
-      LabProfile(String labName) {
-         this.labName = labName;
-      }
-   }
-}
+                });
+
+                saveData();
+                alert(`Berjaya mengimport ${count} data peralatan dari fail CSV!`);
+                render();
+            };
+            reader.readAsText(file);
+        }
+
+        render();
+    </script>
+</body>
+</html>
