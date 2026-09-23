@@ -148,7 +148,6 @@
 
     <!-- Hidden Inputs -->
     <input type="file" id="file-input-excel" accept=".xlsx, .xls" class="hidden" onchange="handleExcelFileSelected(event)">
-    <input type="file" id="file-input-csv" accept=".csv" class="hidden" onchange="handleCSVFileSelected(event)">
     <input type="file" id="file-input-img" accept="image/*" class="hidden" onchange="handleImageFileSelected(event)">
     <input type="file" id="camera-input-img" accept="image/*" capture="environment" class="hidden" onchange="handleImageFileSelected(event)">
 
@@ -160,13 +159,12 @@
             selectedIds: new Set(),
             editingId: null,
             tempImgUri: null,
-            isOverwriteMode: false,
             screenStack: ['HOME']
         };
 
         let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {};
         let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
-        let rawWorkbookStructure = JSON.parse(localStorage.getItem('rawWorkbookStructure')) || {};
+        let rawWorkbookData = JSON.parse(localStorage.getItem('rawWorkbookData')) || {};
         
         let labKeys = Object.keys(labProfiles);
         state.currentLab = localStorage.getItem('currentLab') || (labKeys.length > 0 ? labKeys[0] : '');
@@ -175,7 +173,7 @@
             localStorage.setItem('labProfiles', JSON.stringify(labProfiles));
             localStorage.setItem('activityLogs', JSON.stringify(activityLogs));
             localStorage.setItem('currentLab', state.currentLab);
-            localStorage.setItem('rawWorkbookStructure', JSON.stringify(rawWorkbookStructure));
+            localStorage.setItem('rawWorkbookData', JSON.stringify(rawWorkbookData));
         }
 
         function addLog(action) {
@@ -323,7 +321,7 @@
             if (!state.currentLab) return;
             if (confirm(`Are you sure you want to delete lab location '${state.currentLab}'?\nAll records inside will be permanently removed!`)) {
                 delete labProfiles[state.currentLab];
-                delete rawWorkbookStructure[state.currentLab];
+                delete rawWorkbookData[state.currentLab];
                 addLog(`Deleted lab profile: ${state.currentLab}`);
                 let keys = Object.keys(labProfiles);
                 state.currentLab = keys.length > 0 ? keys[0] : '';
@@ -402,6 +400,7 @@
             return [];
         }
 
+        /* --- SENARAI PERALATAN (Nama Sahaja Dipaparkan) --- */
         function renderEquipmentList(container) {
             renderSearchBar(container, "Search Equipment Name...");
             let items = getFilteredCurrentItems();
@@ -794,17 +793,14 @@
             container.innerHTML = `
                 <div class="card">
                     <h2>App Information</h2>
-                    <p>Version: v1.5.0 (PWA Web Edition)</p>
+                    <p>Version: v2.0.0 (Excel Native Mode)</p>
                     <button class="btn btn-purple" onclick="switchScreen('LOGS')">📜 View Activity Logs</button>
                 </div>
 
                 <div class="card">
                     <h2>Data Import & Export</h2>
                     <button class="btn btn-green" onclick="triggerExcelImport()">📂 Import Excel File (.xlsx / .xls)</button>
-                    <button class="btn btn-purple" onclick="exportFormattedExcel()">📊 Export to Excel (.xlsx) [Format Asal & Auto Tab]</button>
-                    <button class="btn btn-blue" onclick="triggerCSVImport(false)">📂 Import CSV File (Append Data)</button>
-                    <button class="btn btn-navy" onclick="exportCSV()">💾 Export Data to CSV File</button>
-                    <button class="btn btn-red" onclick="triggerCSVImport(true)">⚠️ Overwrite & Replace Data from CSV</button>
+                    <button class="btn btn-purple" onclick="exportFormattedExcel()">💾 Save & Export Excel (.xlsx)</button>
                 </div>
             `;
         }
@@ -841,9 +837,6 @@
 
                     workbook.SheetNames.forEach(sheetName => {
                         let trimmedName = sheetName.trim();
-                        if (trimmedName.toLowerCase().includes("written off") || trimmedName.toLowerCase().includes("summary")) {
-                            return;
-                        }
 
                         let worksheet = workbook.Sheets[sheetName];
                         let jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
@@ -851,6 +844,7 @@
                         let descColIndex = -1;
                         let stockCodeColIndex = -1;
                         let startRowIndex = -1;
+                        let endRowIndex = jsonData.length;
 
                         for (let r = 0; r < jsonData.length; r++) {
                             let row = jsonData[r];
@@ -867,6 +861,15 @@
                             if (descColIndex !== -1 && stockCodeColIndex !== -1) break;
                         }
 
+                        // Cari footer asal (sepertiPrepared by / Checked by)
+                        for (let r = startRowIndex; r < jsonData.length; r++) {
+                            let row = jsonData[r];
+                            if (row && String(row[3] || row[4] || '').includes("Prepared by:")) {
+                                endRowIndex = r;
+                                break;
+                            }
+                        }
+
                         if (descColIndex === -1) return;
 
                         if (!labProfiles[trimmedName]) {
@@ -874,9 +877,10 @@
                         }
                         let profile = labProfiles[trimmedName];
 
-                        // Simpan struktur matriks asal sheet
-                        rawWorkbookStructure[trimmedName] = {
+                        // Simpan struktur matriks asal sheet (Header & Footer)
+                        rawWorkbookData[trimmedName] = {
                             headerRows: jsonData.slice(0, startRowIndex),
+                            footerRows: jsonData.slice(endRowIndex),
                             noColIndex: descColIndex - 1,
                             descColIndex: descColIndex,
                             stockCodeColIndex: stockCodeColIndex !== -1 ? stockCodeColIndex : 19,
@@ -884,7 +888,7 @@
                             maxCols: jsonData[startRowIndex - 1] ? jsonData[startRowIndex - 1].length : 23
                         };
 
-                        for (let r = startRowIndex; r < jsonData.length; r++) {
+                        for (let r = startRowIndex; r < endRowIndex; r++) {
                             let row = jsonData[r];
                             if (!row) continue;
 
@@ -925,19 +929,19 @@
             reader.readAsArrayBuffer(file);
         }
 
-        /* --- FUNGSI EXPORT DENGAN PEMELIHARAAN PENUH FORMAT LAJUR ASAL EXCEL --- */
+        /* --- FUNGSI EXPORT TERUS KE EXCEL MEMELIHARA BENTUK ASAL SHEET & TANDATANGAN --- */
         function exportFormattedExcel() {
             try {
                 let newWorkbook = XLSX.utils.book_new();
 
                 Object.keys(labProfiles).forEach(labName => {
                     let profile = labProfiles[labName];
-                    let rawStruct = rawWorkbookStructure[labName];
+                    let rawStruct = rawWorkbookData[labName];
 
                     let sheetData = [];
 
                     if (rawStruct && rawStruct.headerRows) {
-                        // 1. Salin header asal
+                        // 1. Salin Header asal (Baris 1 - Header Jadual)
                         rawStruct.headerRows.forEach(hRow => sheetData.push([...hRow]));
 
                         let noIdx = rawStruct.noColIndex >= 0 ? rawStruct.noColIndex : 2;
@@ -946,15 +950,13 @@
                         let locIdx = rawStruct.locColIndex;
                         let maxCols = rawStruct.maxCols || 23;
 
-                        // 2. Bina setiap baris peralatan mengekalkan nilai lajur asal
+                        // 2. Masukkan baris data peralatan
                         profile.equipmentList.forEach((item, index) => {
                             let newRow = item.rawRow ? [...item.rawRow] : new Array(maxCols).fill("");
 
-                            // Pastikan saiz tatasusunan mencukupi
                             while (newRow.length < maxCols) newRow.push("");
 
-                            // Kemaskini semula kedudukan lajur khusus sahaja
-                            newRow[noIdx] = index + 1; // No.
+                            newRow[noIdx] = index + 1; // No
                             newRow[descIdx] = item.name; // Description
                             newRow[codeIdx] = item.code; // Stock Code
                             if (locIdx < newRow.length) {
@@ -963,8 +965,13 @@
 
                             sheetData.push(newRow);
                         });
+
+                        // 3. Salin Footer asal (Tandatangan & Pengesahan)
+                        if (rawStruct.footerRows) {
+                            rawStruct.footerRows.forEach(fRow => sheetData.push([...fRow]));
+                        }
                     } else {
-                        // Fallback jika tiada template asal
+                        // Tempelate asas jika fail baharu dicipta
                         sheetData.push(["TUNKU ABDUL RAHMAN UNIVERSITY OF MANAGEMENT AND TECHNOLOGY"]);
                         sheetData.push(["FACULTY OF ENGINEERING AND TECHNOLOGY (FOET)"]);
                         sheetData.push(["DEPARTMENT OF MECHANICAL ENGINEERING (" + labName + ")"]);
@@ -985,7 +992,7 @@
                     XLSX.utils.book_append_sheet(newWorkbook, ws, labName.substring(0, 31));
                 });
 
-                // Auto Create Tab: Teaching Materials
+                // Auto-create Tab: Teaching Materials (jika ada data)
                 let allTeachingData = [];
                 Object.keys(labProfiles).forEach(labName => {
                     labProfiles[labName].teachingList.forEach(t => {
@@ -1004,7 +1011,7 @@
                     XLSX.utils.book_append_sheet(newWorkbook, tmWs, "Teaching Materials");
                 }
 
-                // Auto Create Tab: Faulty Reports
+                // Auto-create Tab: Faulty Reports (jika ada data)
                 let allFaultyData = [];
                 Object.keys(labProfiles).forEach(labName => {
                     labProfiles[labName].faultyList.forEach(f => {
@@ -1023,7 +1030,7 @@
                     XLSX.utils.book_append_sheet(newWorkbook, fWs, "Faulty Reports");
                 }
 
-                // Auto Create Tab: Asset Write Off
+                // Auto-create Tab: Asset Write Off (jika ada data)
                 let allWriteOffData = [];
                 Object.keys(labProfiles).forEach(labName => {
                     labProfiles[labName].writeOffList.forEach(w => {
@@ -1042,154 +1049,14 @@
                     XLSX.utils.book_append_sheet(newWorkbook, wWs, "Asset Write Off");
                 }
 
-                XLSX.writeFile(newWorkbook, `Mechanical_Lab_Inventory_${new Date().toISOString().substring(0, 10)}.xlsx`);
-                addLog("Exported inventory to formatted Excel file (.xlsx)");
-                alert("Berjaya mengeksport fail Excel dengan susunan lajur dan format tepat!");
+                XLSX.writeFile(newWorkbook, `FOET_Mechanical_Engineering_Department_Asset_2024.xlsx`);
+                addLog("Exported inventory to original Excel file format (.xlsx)");
+                alert("Berjaya menyimpan fail Excel (.xlsx) mengikut format asal!");
 
             } catch (err) {
                 console.error(err);
                 alert("Gagal mengeksport Excel: " + err.message);
             }
-        }
-
-        /* --- FUNGSI PARSER CSV --- */
-        function triggerCSVImport(isOverwrite) {
-            state.isOverwriteMode = isOverwrite;
-            if (isOverwrite) {
-                if (!confirm(`⚠️ Warning: Are you sure you want to OVERWRITE all data for '${state.currentLab}'? This cannot be undone!`)) return;
-            }
-            document.getElementById('file-input-csv').click();
-        }
-
-        function handleCSVFileSelected(e) {
-            let file = e.target.files[0];
-            if (!file) return;
-
-            let reader = new FileReader();
-            reader.onload = (event) => {
-                parseAndImportCSV(event.target.result);
-            };
-            reader.readAsText(file);
-        }
-
-        function parseAndImportCSV(text) {
-            let lines = text.split('\n');
-            let fileLab = '';
-            let currentSection = '';
-            let count = 0;
-
-            lines.forEach(line => {
-                let l = line.trim();
-                if (l.startsWith('Lab Location,')) {
-                    let parts = l.split(',');
-                    if (parts.length > 1) fileLab = parts[1].replace(/"/g, '').trim();
-                }
-            });
-
-            if (fileLab) state.currentLab = fileLab;
-            if (!labProfiles[state.currentLab]) labProfiles[state.currentLab] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-
-            let activeLab = labProfiles[state.currentLab];
-
-            if (state.isOverwriteMode) {
-                activeLab.equipmentList = [];
-                activeLab.teachingList = [];
-                activeLab.faultyList = [];
-                activeLab.writeOffList = [];
-            }
-
-            lines.forEach(line => {
-                let l = line.trim();
-                if (!l) return;
-
-                if (l.includes('SECTION 1: EQUIPMENT LIST')) { currentSection = 'EQUIPMENT'; return; }
-                if (l.includes('SECTION 2: TEACHING MATERIALS ORDER')) { currentSection = 'TEACHING'; return; }
-                if (l.includes('SECTION 3: FAULTY / REPAIR REPORTS')) { currentSection = 'FAULTY'; return; }
-                if (l.includes('SECTION 4: ASSET WRITE OFF PROPOSALS')) { currentSection = 'WRITEOFF'; return; }
-
-                if (l.startsWith('No.,') || l.startsWith('Equipment Code,') || l.startsWith('Report ID,') || l.startsWith('Asset Code,')) return;
-
-                let tokens = parseCSVLine(l);
-                if (tokens.length < 2) return;
-
-                if (currentSection === 'EQUIPMENT') {
-                    let code = tokens[1] || tokens[0];
-                    let name = tokens[2] || tokens[1];
-                    if (code && name && !code.includes('No Equipment')) {
-                        if (!activeLab.equipmentList.some(i => i.code === code)) {
-                            activeLab.equipmentList.push({ code, name, imageUri: null });
-                            count++;
-                        }
-                    }
-                } else if (currentSection === 'TEACHING') {
-                    let name = tokens[1] || tokens[0];
-                    let qty = tokens[2] || tokens[1];
-                    let remarks = tokens[3] || '';
-                    if (name && !name.includes('No Teaching')) {
-                        activeLab.teachingList.push({ id: 'TM-' + Date.now() + '-' + count, name, qtyUnit: qty, remarks, imageUri: null });
-                        count++;
-                    }
-                } else if (currentSection === 'FAULTY') {
-                    if (tokens.length >= 4 && !tokens[0].includes('No Faulty')) {
-                        activeLab.faultyList.push({
-                            id: tokens[0], stockCode: tokens[1] || '', name: tokens[2] || tokens[1],
-                            problem: tokens[3] || tokens[2], date: tokens[4] || tokens[3],
-                            status: tokens[5] || 'Pending Repair', remarks: tokens[6] || '', imageUri: null
-                        });
-                        count++;
-                    }
-                } else if (currentSection === 'WRITEOFF') {
-                    if (tokens.length >= 3 && !tokens[0].includes('No Asset Write')) {
-                        activeLab.writeOffList.push({
-                            code: tokens[0], name: tokens[1], reason: tokens[2],
-                            status: tokens[3] || 'Pending', remarks: tokens[4] || '', imageUri: null
-                        });
-                        count++;
-                    }
-                }
-            });
-
-            saveData();
-            addLog(`${state.isOverwriteMode ? 'Overwritten' : 'Imported'} ${count} record(s) into ${state.currentLab}`);
-            alert(`Successfully imported ${count} record(s) into ${state.currentLab}!`);
-            switchScreen('HOME');
-        }
-
-        function parseCSVLine(line) {
-            let result = [], inQuotes = false, sb = '';
-            for (let i = 0; i < line.length; i++) {
-                let c = line.charAt(i);
-                if (c === '"') inQuotes = !inQuotes;
-                else if (c === ',' && !inQuotes) { result.push(sb.trim()); sb = ''; }
-                else sb += c;
-            }
-            result.push(sb.trim());
-            return result.map(s => s.replace(/^"|"$/g, '').replace(/""/g, '"'));
-        }
-
-        function exportCSV() {
-            let activeLab = labProfiles[state.currentLab];
-            if (!activeLab) { alert("Tiada data makmal untuk dieksport!"); return; }
-
-            let csv = `Lab Location,"${state.currentLab}"\nGenerated Date,"${new Date().toISOString()}"\n\n`;
-
-            csv += `---------------------------------------------------------------------------------\nSECTION 1: EQUIPMENT LIST\n---------------------------------------------------------------------------------\nNo.,Equipment Code,Equipment Name\n`;
-            activeLab.equipmentList.forEach((e, idx) => { csv += `${idx+1},"${e.code}","${e.name}"\n`; });
-
-            csv += `\n---------------------------------------------------------------------------------\nSECTION 2: TEACHING MATERIALS ORDER\n---------------------------------------------------------------------------------\nNo.,Item Name,Quantity Unit,Remarks\n`;
-            activeLab.teachingList.forEach((t, idx) => { csv += `${idx+1},"${t.name}","${t.qtyUnit}","${t.remarks||''}"\n`; });
-
-            csv += `\n---------------------------------------------------------------------------------\nSECTION 3: FAULTY / REPAIR REPORTS\n---------------------------------------------------------------------------------\nReport ID,Stock Code,Asset Name,Problem Description,Reported Date,Status,Remarks\n`;
-            activeLab.faultyList.forEach(f => { csv += `"${f.id}","${f.stockCode||''}","${f.name}","${f.problem}","${f.date}","${f.status}","${f.remarks||''}"\n`; });
-
-            csv += `\n---------------------------------------------------------------------------------\nSECTION 4: ASSET WRITE OFF PROPOSALS\n---------------------------------------------------------------------------------\nAsset Code,Asset Name,Disposal Reason,Status,Remarks\n`;
-            activeLab.writeOffList.forEach(w => { csv += `"${w.code}","${w.name}","${w.reason}","${w.status}","${w.remarks||''}"\n`; });
-
-            let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            let link = document.createElement("a");
-            link.href = URL.createObjectURL(blob);
-            link.download = `LabReport_${state.currentLab.replace(/\s+/g, '_')}.csv`;
-            link.click();
         }
 
         render();
