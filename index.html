@@ -141,6 +141,17 @@
     <input type="file" id="camera-input-img" accept="image/*" capture="environment" class="hidden" onchange="handleImageFileSelected(event)">
 
     <script>
+        // --- PENGESAN RELOAD / REFRESH HALAMAN ---
+        (function checkPageReload() {
+            const navEntries = performance.getEntriesByType("navigation");
+            if (navEntries.length > 0) {
+                if (navEntries[0].type === "reload") {
+                    sessionStorage.clear();
+                    console.log("Halaman di-refresh. Cache sessionStorage telah dipadamkan!");
+                }
+            }
+        })();
+
         let state = {
             currentScreen: 'HOME',
             currentLab: '',
