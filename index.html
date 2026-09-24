@@ -133,7 +133,7 @@
         <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
     </nav>
 
-    <!-- Import Input: Append vs Overwrite -->
+    <!-- Import Inputs -->
     <input type="file" id="file-input-import" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImportSelected(event, false)">
     <input type="file" id="file-input-overwrite" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImportSelected(event, true)">
     
@@ -174,8 +174,9 @@
         function isValidLocationName(name) {
             if (!name) return false;
             let trimmed = String(name).trim().toLowerCase();
-            if (/^\d+$/.test(trimmed)) return false; // Discard numbers only
-            if (invalidLocationWords.includes(trimmed)) return false; // Discard header keywords
+            if (!trimmed) return false;
+            if (/^\d+$/.test(trimmed)) return false; 
+            if (invalidLocationWords.includes(trimmed)) return false; 
             return true;
         }
 
@@ -955,7 +956,7 @@
             }
         }
 
-        /* --- IMPORT CSV / EXCEL PARSER (ROBUST MULTI-FORMAT SUPPORT) --- */
+        /* --- IMPORT PARSER FOR SINGLE/MULTI-TAB EXCEL & CSV --- */
         function handleFileImportSelected(e, isOverwrite = false) {
             let file = e.target.files[0];
             if (!file) return;
@@ -972,19 +973,16 @@
                     }
 
                     let itemsImported = 0;
+                    let filenameLoc = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_\-\s]/g, "").trim();
 
                     if (isCSV) {
                         let csvText = evt.target.result;
                         let lines = csvText.split("\n");
 
-                        // Clean filename without extension
-                        let cleanFilename = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_\-\s]/g, "").trim();
-
                         lines.forEach((line, idx) => {
                             if (!line.trim()) return;
                             let lineLower = line.toLowerCase();
 
-                            // Skip header row
                             if (idx === 0 && (lineLower.includes("timestamp") || lineLower.includes("action type") || lineLower.includes("no.") || lineLower.includes("details"))) return;
 
                             let cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
@@ -994,14 +992,12 @@
                                 let categoryCandidate = cols[3] || cols[1] || "Equipment List";
                                 let details = cols[5] || cols[4] || cols[2] || cols[1] || "";
 
-                                // Determine location
-                                let loc = isValidLocationName(locCandidate) ? locCandidate : (isValidLocationName(cleanFilename) ? cleanFilename : "SE009");
+                                let loc = isValidLocationName(locCandidate) ? locCandidate : (isValidLocationName(filenameLoc) ? filenameLoc : (state.currentLab || "SE009"));
                                 
                                 if (!labProfiles[loc]) {
                                     labProfiles[loc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                                 }
                                 let profile = labProfiles[loc];
-
                                 let cat = categoryCandidate.toLowerCase();
 
                                 if (cat.includes("teaching")) {
@@ -1014,7 +1010,6 @@
                                     profile.writeOffList.push({ code: `AST-${Date.now()}`, name: details, reason: "Write Off Proposal", status: "Pending", remarks: "", imageUri: null });
                                     itemsImported++;
                                 } else {
-                                    // Default to Equipment List
                                     let code = `EQ-${Date.now()}-${Math.floor(Math.random()*1000)}`;
                                     let name = details || cols[1] || cols[0];
                                     if (name) {
@@ -1022,40 +1017,57 @@
                                         itemsImported++;
                                     }
                                 }
-                            } else if (cols.length >= 1 && cols[0].trim().length > 0) {
-                                let name = cols[1] || cols[0];
-                                let loc = isValidLocationName(cleanFilename) ? cleanFilename : (state.currentLab || "SE009");
-                                if (!labProfiles[loc]) {
-                                    labProfiles[loc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-                                }
-                                labProfiles[loc].equipmentList.push({ code: `EQ-${Date.now()}`, name, imageUri: null, extraCells: {} });
-                                itemsImported++;
                             }
                         });
                     } else {
-                        // Excel (.xlsx / .xls) Multi-Sheet parsing
+                        // Multi-Tab Excel (.xlsx / .xls)
                         let arrayBuffer = evt.target.result;
                         let workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
                         workbook.SheetNames.forEach(sheetName => {
-                            let trimmedName = sheetName.trim();
-                            if (!isValidLocationName(trimmedName)) return;
-
+                            let sheetCatName = sheetName.trim();
                             let worksheet = workbook.Sheets[sheetName];
-
-                            if (!labProfiles[trimmedName]) {
-                                labProfiles[trimmedName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-                            }
-                            let profile = labProfiles[trimmedName];
-
                             let jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-                            jsonRows.forEach((row, rIdx) => {
-                                if (rIdx < 10 || !row) return;
-                                let descName = row[3] ? String(row[3]).trim() : '';
-                                let stockCode = row[19] ? String(row[19]).trim() : '';
 
-                                if (descName && stockCode && !stockCode.startsWith("(")) {
-                                    if (!profile.equipmentList.some(i => i.code === stockCode)) {
+                            jsonRows.forEach((row, rIdx) => {
+                                if (!row || row.length < 2) return;
+                                
+                                // Header check
+                                let rowStr = row.join(" ").toLowerCase();
+                                if (rIdx === 0 || rowStr.includes("timestamp") || rowStr.includes("action type")) return;
+
+                                let locVal = row[2] ? String(row[2]).trim() : '';
+                                let detailsVal = row[5] ? String(row[5]).trim() : (row[4] ? String(row[4]).trim() : (row[1] ? String(row[1]).trim() : ''));
+                                
+                                let targetLoc = isValidLocationName(locVal) ? locVal : (isValidLocationName(filenameLoc) ? filenameLoc : (state.currentLab || "SE009"));
+
+                                if (!labProfiles[targetLoc]) {
+                                    labProfiles[targetLoc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
+                                }
+                                let profile = labProfiles[targetLoc];
+
+                                let catLower = sheetCatName.toLowerCase();
+
+                                if (catLower.includes("teaching")) {
+                                    if (detailsVal) {
+                                        profile.teachingList.push({ id: `TM-${Date.now()}-${Math.random().toString(36).substr(2,4)}`, name: detailsVal, qtyUnit: "1 unit", remarks: "", imageUri: null });
+                                        itemsImported++;
+                                    }
+                                } else if (catLower.includes("faulty")) {
+                                    if (detailsVal) {
+                                        profile.faultyList.push({ id: `F-${Date.now()}-${Math.random().toString(36).substr(2,4)}`, stockCode: "N/A", name: detailsVal, problem: "Reported", date: new Date().toISOString().substring(0,10), status: "Pending Repair", remarks: "", imageUri: null });
+                                        itemsImported++;
+                                    }
+                                } else if (catLower.includes("write off")) {
+                                    if (detailsVal) {
+                                        profile.writeOffList.push({ code: `AST-${Date.now()}`, name: detailsVal, reason: "Write Off Proposal", status: "Pending", remarks: "", imageUri: null });
+                                        itemsImported++;
+                                    }
+                                } else if (catLower.includes("equipment")) {
+                                    let descName = row[3] ? String(row[3]).trim() : detailsVal;
+                                    let stockCode = row[19] ? String(row[19]).trim() : `EQ-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+
+                                    if (descName) {
                                         profile.equipmentList.push({ code: stockCode, name: descName, imageUri: null, extraCells: {} });
                                         itemsImported++;
                                     }
@@ -1066,9 +1078,9 @@
 
                     cleanInvalidLocations();
                     let keys = Object.keys(labProfiles).filter(isValidLocationName);
-                    state.currentLab = keys.length > 0 ? keys[0] : '';
+                    state.currentLab = keys.length > 0 ? keys[0] : 'SE009';
 
-                    addLog(state.currentLab || 'SYSTEM', 'Import File', 'IMPORTED', `${isOverwrite ? 'Cleared recent data & loaded' : 'Imported'} ${itemsImported} item(s) from "${file.name}"`);
+                    addLog(state.currentLab, 'Import File', 'IMPORTED', `${isOverwrite ? 'Cleared recent data & loaded' : 'Imported'} ${itemsImported} item(s) from "${file.name}"`);
                     saveData();
                     alert(`Success! Imported ${itemsImported} record(s) into location '${state.currentLab}'.`);
                     switchScreen('HOME');
