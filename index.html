@@ -1,189 +1,115 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="ms">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Mechanical Lab Inventory</title>
-    <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#071827">
-    <meta name="apple-mobile-web-app-capable" content="yes">
-    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="apple-mobile-web-app-title" content="MechLab">
+    <title>Mechanical Lab Inventory Web</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { background-color: #dbe3eb; color: #0a192d; display: flex; justify-content: center; align-items: center; min-height: 100vh; margin: 0; }
         
-        /* App Window Frame (Pusat Skrin) */
-        .app-frame {
-            width: 100%;
-            max-width: 600px;
-            height: 100vh;
-            max-height: 900px;
-            background-color: #ebf0f5;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-            border-radius: 12px;
-            overflow: hidden;
-            position: relative;
-        }
+        body { display: flex; flex-direction: column; min-height: 100vh; background-color: #ebf0f5; color: #0a192d; }
 
-        @media (max-width: 600px) {
-            .app-frame {
-                max-width: 100%;
-                height: 100vh;
-                max-height: 100vh;
-                border-radius: 0;
-            }
-        }
-        
-        /* Top Navigation Bar */
-        header { background-color: #071827; color: white; display: flex; align-items: center; justify-content: space-between; padding: 14px 18px; height: 56px; flex-shrink: 0; }
-        header h1 { font-size: 17px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .btn-back { background-color: #145b9d; color: white; border: none; padding: 6px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; transition: 0.2s; }
-        .btn-back:hover { background-color: #0d4375; }
+        header { background-color: #071827; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; height: 56px; position: sticky; top: 0; z-index: 100; }
+        header h1 { font-size: 16px; font-weight: bold; }
+        .btn-back { background-color: #145b9d; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
 
-        /* Main Scrollable Content Area */
-        main { flex: 1; overflow-y: auto; padding: 16px; }
+        main { flex: 1; padding: 16px; width: 100%; padding-bottom: 76px; }
         
-        /* Cards & Layout */
-        .card { background-color: white; border-radius: 10px; border: 1px solid #c2d0dc; padding: 16px; margin-bottom: 14px; box-shadow: 0 2px 6px rgba(0,0,0,0.04); }
+        .card { background-color: white; border-radius: 8px; border: 1px solid #b4c3d2; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
         .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .col { flex: 1; }
         
-        /* Typography */
-        h2 { font-size: 16px; font-weight: bold; color: #071827; margin-bottom: 6px; }
+        h2 { font-size: 15px; font-weight: bold; color: #071827; margin-bottom: 6px; }
         p { font-size: 13px; color: #465564; }
         .text-center { text-align: center; }
 
-        /* Form Controls */
         label { font-size: 13px; font-weight: bold; color: #071827; display: block; margin: 10px 0 4px 0; }
-        input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 11px; border: 1px solid #bdc3c7; border-radius: 6px; font-size: 13px; background-color: #fdfdfd; transition: 0.2s; }
-        input[type="text"]:focus, select:focus, textarea:focus { border-color: #145b9d; outline: none; background-color: #fff; }
-        textarea { resize: vertical; min-height: 70px; }
+        input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background-color: white; }
         
-        /* Buttons */
-        .btn { width: 100%; padding: 13px; border: none; border-radius: 8px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); transition: transform 0.1s, opacity 0.2s; }
-        .btn:active { transform: scale(0.98); }
+        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; }
         .btn-green { background-color: #249d6b; }
         .btn-blue { background-color: #145b9d; }
+        .btn-purple { background-color: #800080; }
         .btn-orange { background-color: #ef8b24; }
         .btn-red { background-color: #cc4c45; }
-        .btn-purple { background-color: #800080; }
-        .btn-navy { background-color: #071827; }
-        .btn-inline { width: auto; padding: 9px 14px; margin-top: 0; }
+        .btn-inline { width: auto; padding: 8px 12px; margin-top: 0; font-size: 12px; }
 
-        /* Bottom Tab Bar */
-        nav { background-color: #071827; display: flex; height: 56px; flex-shrink: 0; border-top: 1px solid #1a2f43; }
-        .tab-btn { flex: 1; background: none; border: none; color: #94a3b8; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: 0.2s; }
-        .tab-btn.active { background-color: #145b9d; color: white; }
-
-        /* Item List Card */
-        .item-card { display: flex; align-items: center; background: white; border: 1.5px solid #c2d0dc; border-radius: 8px; padding: 12px; margin-bottom: 10px; gap: 10px; cursor: pointer; transition: 0.2s; }
-        .item-card:hover { border-color: #145b9d; }
-        .item-card input[type="checkbox"] { width: 20px; height: 20px; cursor: pointer; }
-        .item-info { flex: 1; }
-        .item-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 6px; }
+        nav { background-color: #071827; display: flex; height: 56px; width: 100%; position: fixed; bottom: 0; left: 0; z-index: 100; }
+        .tab-btn { flex: 1; background: none; border: none; color: white; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
         
-        /* Image Preview Area */
-        .img-preview { width: 100%; max-height: 160px; object-fit: contain; margin-top: 8px; border-radius: 6px; background: #eee; display: none; }
+        .item-card { background: white; border: 1.5px solid #b4c3d2; border-radius: 6px; padding: 12px; margin-bottom: 8px; cursor: pointer; }
         .hidden { display: none !important; }
     </style>
 </head>
 <body>
 
-    <div class="app-frame">
-        <!-- Header -->
-        <header>
-            <h1 id="header-title">Mechanical Lab</h1>
-            <button id="back-btn" class="btn-back hidden" onclick="goBack()">← BACK</button>
-        </header>
+    <header>
+        <h1 id="header-title">Mechanical Lab</h1>
+        <button id="back-btn" class="btn-back hidden" onclick="goBack()">← BACK</button>
+    </header>
 
-        <!-- Main Content Area -->
-        <main id="app-content"></main>
+    <main id="app-content"></main>
 
-        <!-- Bottom Navigation Bar -->
-        <nav>
-            <button class="tab-btn active" onclick="switchScreen('HOME')">📋 List</button>
-            <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
-        </nav>
-    </div>
+    <nav>
+        <button class="tab-btn" onclick="switchScreen('HOME')">📋 Menu</button>
+        <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
+    </nav>
 
-    <!-- Hidden Inputs for CSV/Image Handling -->
-    <input type="file" id="file-input-csv" accept=".csv" class="hidden" onchange="handleCSVFileSelected(event)">
-    <input type="file" id="file-input-img" accept="image/*" class="hidden" onchange="handleImageFileSelected(event)">
-    <input type="file" id="camera-input-img" accept="image/*" capture="environment" class="hidden" onchange="handleImageFileSelected(event)">
+    <input type="file" id="file-input-csv" accept=".csv" class="hidden" onchange="handleCSVImport(event)">
 
     <script>
-        // --- APP STATE & STORAGE ---
         let state = {
             currentScreen: 'HOME',
             currentLab: '',
             searchQuery: '',
-            selectedIds: new Set(),
             editingId: null,
-            tempImgUri: null,
             isOverwriteMode: false,
             screenStack: ['HOME']
         };
 
         let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {
-            'Lab 1 (Mechanical)': { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] },
-            'Lab 2 (Automotive)': { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] }
+            "Lab 1 (Mechanical)": { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] },
+            "Lab 2 (Automotive)": { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] }
         };
 
-        let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
-        state.currentLab = localStorage.getItem('currentLab') || Object.keys(labProfiles)[0] || 'Lab 1 (Mechanical)';
+        let labKeys = Object.keys(labProfiles);
+        state.currentLab = localStorage.getItem('currentLab') || (labKeys.length > 0 ? labKeys[0] : 'Lab 1 (Mechanical)');
 
         function saveData() {
             localStorage.setItem('labProfiles', JSON.stringify(labProfiles));
-            localStorage.setItem('activityLogs', JSON.stringify(activityLogs));
             localStorage.setItem('currentLab', state.currentLab);
         }
 
-        function addLog(action) {
-            let timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
-            activityLogs.unshift(`[${timestamp}] ${action}`);
-            saveData();
-        }
-
-        // --- NAVIGATION CONTROLLER ---
         function switchScreen(screen, editingId = null) {
             state.currentScreen = screen;
             state.editingId = editingId;
-            state.selectedIds.clear();
             state.searchQuery = '';
-            
             if (state.screenStack[state.screenStack.length - 1] !== screen) {
                 state.screenStack.push(screen);
             }
             render();
+            window.scrollTo(0, 0);
         }
 
         function goBack() {
             if (state.screenStack.length > 1) {
                 state.screenStack.pop();
                 state.currentScreen = state.screenStack[state.screenStack.length - 1];
-                state.selectedIds.clear();
                 state.searchQuery = '';
                 render();
+                window.scrollTo(0, 0);
             }
         }
 
-        // --- RENDER ENGINE ---
         function render() {
             let content = document.getElementById('app-content');
             let backBtn = document.getElementById('back-btn');
             let headerTitle = document.getElementById('header-title');
 
-            // Header Title Setup
             headerTitle.innerText = state.currentLab ? `${getScreenTitle(state.currentScreen)} · ${state.currentLab}` : getScreenTitle(state.currentScreen);
             
-            if (state.screenStack.length > 1) {
-                backBtn.classList.remove('hidden');
-            } else {
-                backBtn.classList.add('hidden');
-            }
+            if (state.screenStack.length > 1) backBtn.classList.remove('hidden');
+            else backBtn.classList.add('hidden');
 
             content.innerHTML = '';
 
@@ -198,7 +124,6 @@
                 case 'WRITEOFF_LIST': renderWriteOffList(content); break;
                 case 'WRITEOFF_EDIT': renderWriteOffEdit(content); break;
                 case 'MORE': renderMore(content); break;
-                case 'LOGS': renderLogs(content); break;
             }
         }
 
@@ -208,52 +133,47 @@
                 case 'EQUIPMENT_LIST': return 'Equipment List';
                 case 'EQUIPMENT_EDIT': return state.editingId ? 'Edit Equipment' : 'Add Equipment';
                 case 'TEACHING_LIST': return 'Teaching Materials';
-                case 'TEACHING_EDIT': return state.editingId ? 'Edit Teaching Material' : 'Add Teaching Material';
+                case 'TEACHING_EDIT': return state.editingId ? 'Edit Teaching Item' : 'Add Teaching Item';
                 case 'FAULTY_LIST': return 'Faulty / Repair';
                 case 'FAULTY_EDIT': return state.editingId ? 'Edit Faulty Report' : 'Add Faulty Report';
                 case 'WRITEOFF_LIST': return 'Asset Write Off';
                 case 'WRITEOFF_EDIT': return state.editingId ? 'Edit Write Off' : 'Add Write Off';
                 case 'MORE': return 'More Options';
-                case 'LOGS': return 'Activity Logs';
                 default: return 'Mechanical Lab';
             }
         }
 
-        // --- SCREEN RENDERING IMPLEMENTATIONS ---
-
-        // 1. HOME SCREEN
         function renderHome(container) {
-            let html = `
-                <div class="text-center" style="margin-bottom: 16px;">
-                    <h2 style="font-size: 22px; color:#071827;">WELCOME</h2>
-                    <p id="clock-display" style="color:#64748b; font-weight:500;">${new Date().toLocaleString()}</p>
+            let labs = Object.keys(labProfiles);
+            let optionsHTML = labs.map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('');
+
+            container.innerHTML = `
+                <div class="card text-center">
+                    <h2>WELCOME</h2>
+                    <p>${new Date().toLocaleDateString('ms-MY', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
                 </div>
 
                 <div class="card">
-                    <label style="margin-top:0;">📍 Active Lab Location:</label>
+                    <label>📍 Active Lab Location:</label>
                     <div class="row">
-                        <select id="lab-select" onchange="onLabSwitched(this.value)" class="col">
-                            ${Object.keys(labProfiles).map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('')}
-                        </select>
+                        <select id="lab-select" onchange="onLabSwitched(this.value)" class="col">${optionsHTML}</select>
                         <button class="btn btn-green btn-inline" onclick="addLabPrompt()">＋ Add</button>
                         <button class="btn btn-red btn-inline" onclick="deleteLabPrompt()">🗑</button>
                     </div>
                 </div>
 
                 <div>
-                    <button class="btn btn-green" onclick="switchScreen('EQUIPMENT_LIST')">⚙ Equipment List<br><span style="font-size:11px;font-weight:normal;">Lab equipment & apparatus</span></button>
-                    <button class="btn btn-purple" onclick="switchScreen('TEACHING_LIST')">📚 Teaching Materials<br><span style="font-size:11px;font-weight:normal;">Teaching materials to order</span></button>
-                    <button class="btn btn-orange" onclick="switchScreen('FAULTY_LIST')">🔧 Faulty / Repair<br><span style="font-size:11px;font-weight:normal;">Report & track issues</span></button>
-                    <button class="btn btn-red" onclick="switchScreen('WRITEOFF_LIST')">🗑 Asset to Write Off<br><span style="font-size:11px;font-weight:normal;">List & disposal status</span></button>
+                    <button class="btn btn-green" onclick="switchScreen('EQUIPMENT_LIST')">⚙ Equipment List</button>
+                    <button class="btn btn-purple" onclick="switchScreen('TEACHING_LIST')">📚 Teaching Materials</button>
+                    <button class="btn btn-orange" onclick="switchScreen('FAULTY_LIST')">🔧 Faulty / Repair</button>
+                    <button class="btn btn-red" onclick="switchScreen('WRITEOFF_LIST')">🗑 Asset to Write Off</button>
                 </div>
             `;
-            container.innerHTML = html;
         }
 
         function onLabSwitched(newLab) {
             state.currentLab = newLab;
             saveData();
-            addLog(`Switched active lab location to: ${newLab}`);
             render();
         }
 
@@ -265,379 +185,312 @@
                     labProfiles[name] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                     state.currentLab = name;
                     saveData();
-                    addLog(`Created new Lab Location: ${name}`);
                     render();
-                } else {
-                    alert("Lab location already exists!");
-                }
+                } else alert("Lab location already exists!");
             }
         }
 
         function deleteLabPrompt() {
-            if (confirm(`Are you sure you want to delete lab location '${state.currentLab}'?\nAll records inside will be permanently removed!`)) {
+            if (confirm(`Delete lab location '${state.currentLab}' and all its records?`)) {
                 delete labProfiles[state.currentLab];
-                addLog(`Deleted lab profile: ${state.currentLab}`);
-                state.currentLab = Object.keys(labProfiles)[0] || '';
+                let keys = Object.keys(labProfiles);
+                state.currentLab = keys.length > 0 ? keys[0] : '';
                 saveData();
                 render();
             }
         }
 
-        // SEARCH BAR HELPER
-        function renderSearchBar(container, placeholder, onSearch) {
+        function renderSearchBar(container, placeholder, onFilter) {
             let searchDiv = document.createElement('div');
-            searchDiv.innerHTML = `<input type="text" placeholder="🔍 ${placeholder}" value="${state.searchQuery}" oninput="onSearchInput(this.value)">`;
+            searchDiv.innerHTML = `<input type="text" placeholder="🔍 ${placeholder}" value="${state.searchQuery}">`;
             container.appendChild(searchDiv);
-        }
-
-        function onSearchInput(val) {
-            state.searchQuery = val;
-            render();
-        }
-
-        function matchesQuery(text, query) {
-            if (!query.trim()) return true;
-            if (!text) return false;
-            return text.toLowerCase().includes(query.toLowerCase());
-        }
-
-        // SELECTION BAR HELPER
-        function renderSelectionBar(container, totalCount, onDeleteSelected) {
-            let isAllSelected = totalCount > 0 && state.selectedIds.size === totalCount;
-            let bar = document.createElement('div');
-            bar.className = 'row card';
-            bar.style.padding = '10px';
-            bar.innerHTML = `
-                <label class="col" style="margin:0;"><input type="checkbox" ${isAllSelected ? 'checked' : ''} onchange="toggleSelectAll(this.checked, ${totalCount})"> Select All (${state.selectedIds.size}/${totalCount})</label>
-                <button class="btn btn-red btn-inline" onclick="confirmDeleteSelected()">🗑 Delete (${state.selectedIds.size})</button>
-            `;
-            container.appendChild(bar);
-        }
-
-        function toggleSelectAll(checked, totalCount) {
-            let activeLab = labProfiles[state.currentLab];
-            state.selectedIds.clear();
-            if (checked && activeLab) {
-                let items = getFilteredCurrentItems();
-                items.forEach(item => state.selectedIds.add(item.id || item.code));
-            }
-            render();
-        }
-
-        function confirmDeleteSelected() {
-            if (state.selectedIds.size === 0) {
-                alert("Please select at least one item!");
-                return;
-            }
-            if (confirm(`Delete ${state.selectedIds.size} item(s) from ${state.currentLab}?`)) {
-                let activeLab = labProfiles[state.currentLab];
-                if (state.currentScreen === 'EQUIPMENT_LIST') activeLab.equipmentList = activeLab.equipmentList.filter(i => !state.selectedIds.has(i.code));
-                if (state.currentScreen === 'TEACHING_LIST') activeLab.teachingList = activeLab.teachingList.filter(i => !state.selectedIds.has(i.id));
-                if (state.currentScreen === 'FAULTY_LIST') activeLab.faultyList = activeLab.faultyList.filter(i => !state.selectedIds.has(i.id));
-                if (state.currentScreen === 'WRITEOFF_LIST') activeLab.writeOffList = activeLab.writeOffList.filter(i => !state.selectedIds.has(i.code));
-
-                addLog(`Deleted ${state.selectedIds.size} item(s) from ${state.currentLab}`);
-                state.selectedIds.clear();
-                saveData();
-                render();
-            }
-        }
-
-        function getFilteredCurrentItems() {
-            let activeLab = labProfiles[state.currentLab];
-            if (!activeLab) return [];
-            let q = state.searchQuery;
-
-            if (state.currentScreen === 'EQUIPMENT_LIST') return activeLab.equipmentList.filter(i => matchesQuery(i.name, q) || matchesQuery(i.code, q));
-            if (state.currentScreen === 'TEACHING_LIST') return activeLab.teachingList.filter(i => matchesQuery(i.name, q));
-            if (state.currentScreen === 'FAULTY_LIST') return activeLab.faultyList.filter(i => matchesQuery(i.name, q) || matchesQuery(i.stockCode, q));
-            if (state.currentScreen === 'WRITEOFF_LIST') return activeLab.writeOffList.filter(i => matchesQuery(i.name, q) || matchesQuery(i.code, q));
-            return [];
-        }
-
-        // 2. EQUIPMENT LIST & EDIT
-        function renderEquipmentList(container) {
-            renderSearchBar(container, "Search Equipment Name...", val => {});
-            let items = getFilteredCurrentItems();
-            renderSelectionBar(container, items.length);
-
-            let listDiv = document.createElement('div');
-            items.forEach(item => {
-                let card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <input type="checkbox" ${state.selectedIds.has(item.code) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.code}')">
-                    <div class="item-info">
-                        <h2>${item.code} · ${item.name}</h2>
-                    </div>
-                    ${item.imageUri ? `<img src="${item.imageUri}" class="item-thumb">` : ''}
-                `;
-                card.onclick = () => switchScreen('EQUIPMENT_EDIT', item.code);
-                listDiv.appendChild(card);
+            searchDiv.querySelector('input').addEventListener('input', function(e) {
+                state.searchQuery = e.target.value;
+                onFilter();
             });
+        }
+
+        /* --- 1. EQUIPMENT SECTION --- */
+        function renderEquipmentList(container) {
+            renderSearchBar(container, "Search Equipment Name / Code...", filterEquipmentUI);
+            let listDiv = document.createElement('div');
+            listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
+            filterEquipmentUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-green';
             addBtn.innerText = '＋ Add Equipment';
-            addBtn.onclick = () => { state.tempImgUri = null; switchScreen('EQUIPMENT_EDIT', null); };
+            addBtn.onclick = () => switchScreen('EQUIPMENT_EDIT', null);
             container.appendChild(addBtn);
         }
 
+        function filterEquipmentUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv || !labProfiles[state.currentLab]) return;
+            let q = state.searchQuery.toLowerCase();
+            let items = labProfiles[state.currentLab].equipmentList.filter(i => !q || i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
+            
+            listDiv.innerHTML = '';
+            items.forEach(item => {
+                let card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `<h2>${item.name}</h2><p>Stock Code: ${item.code}</p>`;
+                card.onclick = () => switchScreen('EQUIPMENT_EDIT', item.code);
+                listDiv.appendChild(card);
+            });
+        }
+
         function renderEquipmentEdit(container) {
-            let activeLab = labProfiles[state.currentLab];
-            let item = activeLab ? activeLab.equipmentList.find(i => i.code === state.editingId) : null;
-            state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
-
+            let item = labProfiles[state.currentLab].equipmentList.find(i => i.code === state.editingId);
             container.innerHTML = `
-                ${renderImageEditorHTML()}
-                <label>📦 Stock List Number / Equipment Code:</label>
-                <input type="text" id="eq-code" placeholder="e.g. ST/P103/2015/E001" value="${item ? item.code : ''}">
-                
-                <label>⚙ Equipment Name:</label>
-                <input type="text" id="eq-name" placeholder="e.g. Governors Apparatus" value="${item ? item.name : ''}">
-
-                <button class="btn btn-green" onclick="saveEquipment()">💾 Save Equipment</button>
-                ${item ? `<button class="btn btn-red" onclick="deleteSingleItem('equipmentList', '${item.code}')">❌ Delete Equipment</button>` : ''}
+                <div class="card">
+                    <label>📦 Stock List Number / Equipment Code:</label>
+                    <input type="text" id="eq-code" value="${item ? item.code : ''}">
+                    <label>⚙ Equipment Name:</label>
+                    <input type="text" id="eq-name" value="${item ? item.name : ''}">
+                    <button class="btn btn-green" onclick="saveEquipment()">💾 Save Equipment</button>
+                    ${item ? `<button class="btn btn-red" onclick="deleteEquipment('${item.code}')">❌ Delete Equipment</button>` : ''}
+                </div>
             `;
-            updateImagePreview();
         }
 
         function saveEquipment() {
             let code = document.getElementById('eq-code').value.trim();
             let name = document.getElementById('eq-name').value.trim();
-            if (!code || !name) { alert("Enter Stock Code and Equipment Name!"); return; }
-
-            let activeLab = labProfiles[state.currentLab];
+            if (!code || !name) { alert("Please fill Code and Name!"); return; }
+            
+            let list = labProfiles[state.currentLab].equipmentList;
             if (state.editingId) {
-                let item = activeLab.equipmentList.find(i => i.code === state.editingId);
-                if (item) { item.code = code; item.name = name; item.imageUri = state.tempImgUri; }
-                addLog(`Updated Equipment: ${code} in ${state.currentLab}`);
+                let item = list.find(i => i.code === state.editingId);
+                if (item) { item.code = code; item.name = name; }
             } else {
-                activeLab.equipmentList.push({ code, name, imageUri: state.tempImgUri });
-                addLog(`Added Equipment: ${code} (${name}) in ${state.currentLab}`);
+                list.push({ code, name });
             }
             saveData();
             goBack();
         }
 
-        // 3. TEACHING MATERIALS LIST & EDIT
-        function renderTeachingList(container) {
-            renderSearchBar(container, "Search Teaching Material Name...", val => {});
-            let items = getFilteredCurrentItems();
-            renderSelectionBar(container, items.length);
+        function deleteEquipment(code) {
+            if (confirm("Delete this equipment?")) {
+                let list = labProfiles[state.currentLab].equipmentList;
+                labProfiles[state.currentLab].equipmentList = list.filter(i => i.code !== code);
+                saveData();
+                goBack();
+            }
+        }
 
+        /* --- 2. TEACHING MATERIALS SECTION --- */
+        function renderTeachingList(container) {
+            renderSearchBar(container, "Search Teaching Material Name...", filterTeachingUI);
             let listDiv = document.createElement('div');
-            items.forEach(item => {
-                let card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <input type="checkbox" ${state.selectedIds.has(item.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.id}')">
-                    <div class="item-info">
-                        <h2>${item.name}</h2>
-                        <p>Quantity / Unit: ${item.qtyUnit}</p>
-                    </div>
-                `;
-                card.onclick = () => switchScreen('TEACHING_EDIT', item.id);
-                listDiv.appendChild(card);
-            });
+            listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
+            filterTeachingUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-purple';
             addBtn.innerText = '＋ Add Teaching Material Order';
-            addBtn.onclick = () => { state.tempImgUri = null; switchScreen('TEACHING_EDIT', null); };
+            addBtn.onclick = () => switchScreen('TEACHING_EDIT', null);
             container.appendChild(addBtn);
         }
 
+        function filterTeachingUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv || !labProfiles[state.currentLab]) return;
+            let q = state.searchQuery.toLowerCase();
+            let items = labProfiles[state.currentLab].teachingList.filter(i => !q || i.name.toLowerCase().includes(q));
+
+            listDiv.innerHTML = '';
+            items.forEach(item => {
+                let card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `<h2>${item.name}</h2><p>Qty: ${item.qtyUnit} ${item.remarks ? '| ' + item.remarks : ''}</p>`;
+                card.onclick = () => switchScreen('TEACHING_EDIT', item.id);
+                listDiv.appendChild(card);
+            });
+        }
+
         function renderTeachingEdit(container) {
-            let activeLab = labProfiles[state.currentLab];
-            let item = activeLab ? activeLab.teachingList.find(i => i.id === state.editingId) : null;
-            state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
-
+            let item = labProfiles[state.currentLab].teachingList.find(i => i.id === state.editingId);
             container.innerHTML = `
-                ${renderImageEditorHTML()}
-                <label>📚 Teaching Material Item Name:</label>
-                <input type="text" id="tm-name" placeholder="e.g. Marker Pen / Dust Bin" value="${item ? item.name : ''}">
-                
-                <label>🔢 Quantity / Unit:</label>
-                <input type="text" id="tm-qty" placeholder="e.g. 5 boxes / 2 units" value="${item ? item.qtyUnit : ''}">
-
-                <label>📝 Additional Remarks:</label>
-                <textarea id="tm-remarks" placeholder="Enter additional remarks">${item ? (item.remarks || '') : ''}</textarea>
-
-                <button class="btn btn-green" onclick="saveTeaching()">💾 Save Order Item</button>
-                ${item ? `<button class="btn btn-red" onclick="deleteSingleItem('teachingList', '${item.id}')">❌ Delete Item</button>` : ''}
+                <div class="card">
+                    <label>📚 Teaching Material Item Name:</label>
+                    <input type="text" id="tm-name" value="${item ? item.name : ''}">
+                    <label>🔢 Quantity / Unit:</label>
+                    <input type="text" id="tm-qty" value="${item ? item.qtyUnit : ''}">
+                    <label>📝 Additional Remarks:</label>
+                    <input type="text" id="tm-remarks" value="${item && item.remarks ? item.remarks : ''}">
+                    <button class="btn btn-green" onclick="saveTeaching()">💾 Save Order Item</button>
+                    ${item ? `<button class="btn btn-red" onclick="deleteTeaching('${item.id}')">❌ Delete Item</button>` : ''}
+                </div>
             `;
-            updateImagePreview();
         }
 
         function saveTeaching() {
             let name = document.getElementById('tm-name').value.trim();
-            let qty = document.getElementById('tm-qty').value.trim();
+            let qtyUnit = document.getElementById('tm-qty').value.trim();
             let remarks = document.getElementById('tm-remarks').value.trim();
-            if (!name || !qty) { alert("Enter Item Name and Quantity!"); return; }
+            if (!name || !qtyUnit) { alert("Please fill Name and Quantity!"); return; }
 
-            let activeLab = labProfiles[state.currentLab];
+            let list = labProfiles[state.currentLab].teachingList;
             if (state.editingId) {
-                let item = activeLab.teachingList.find(i => i.id === state.editingId);
-                if (item) { item.name = name; item.qtyUnit = qty; item.remarks = remarks; item.imageUri = state.tempImgUri; }
-                addLog(`Updated Teaching Order: ${name} in ${state.currentLab}`);
+                let item = list.find(i => i.id === state.editingId);
+                if (item) { item.name = name; item.qtyUnit = qtyUnit; item.remarks = remarks; }
             } else {
-                let id = 'TM-' + Date.now();
-                activeLab.teachingList.push({ id, name, qtyUnit: qty, remarks, imageUri: state.tempImgUri });
-                addLog(`Added Teaching Order: ${name} (${qty}) in ${state.currentLab}`);
+                list.push({ id: 'TM-' + Date.now(), name, qtyUnit, remarks });
             }
             saveData();
             goBack();
         }
 
-        // 4. FAULTY REPORT LIST & EDIT
-        function renderFaultyList(container) {
-            renderSearchBar(container, "Search Faulty Asset Name...", val => {});
-            let items = getFilteredCurrentItems();
-            renderSelectionBar(container, items.length);
+        function deleteTeaching(id) {
+            if (confirm("Delete this teaching item?")) {
+                let list = labProfiles[state.currentLab].teachingList;
+                labProfiles[state.currentLab].teachingList = list.filter(i => i.id !== id);
+                saveData();
+                goBack();
+            }
+        }
 
+        /* --- 3. FAULTY / REPAIR SECTION --- */
+        function renderFaultyList(container) {
+            renderSearchBar(container, "Search Faulty Asset Name...", filterFaultyUI);
             let listDiv = document.createElement('div');
-            items.forEach(item => {
-                let card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <input type="checkbox" ${state.selectedIds.has(item.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.id}')">
-                    <div class="item-info">
-                        <h2>${item.name}</h2>
-                        <p>${item.problem} • ${item.date} • <b>${item.status}</b></p>
-                    </div>
-                `;
-                card.onclick = () => switchScreen('FAULTY_EDIT', item.id);
-                listDiv.appendChild(card);
-            });
+            listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
+            filterFaultyUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-orange';
             addBtn.innerText = '＋ Add Faulty Report';
-            addBtn.onclick = () => { state.tempImgUri = null; switchScreen('FAULTY_EDIT', null); };
+            addBtn.onclick = () => switchScreen('FAULTY_EDIT', null);
             container.appendChild(addBtn);
         }
 
+        function filterFaultyUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv || !labProfiles[state.currentLab]) return;
+            let q = state.searchQuery.toLowerCase();
+            let items = labProfiles[state.currentLab].faultyList.filter(i => !q || i.name.toLowerCase().includes(q) || (i.stockCode && i.stockCode.toLowerCase().includes(q)));
+
+            listDiv.innerHTML = '';
+            items.forEach(item => {
+                let card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `<h2>${item.name}</h2><p>Issue: ${item.problem} | Status: ${item.status || 'Pending Repair'}</p>`;
+                card.onclick = () => switchScreen('FAULTY_EDIT', item.id);
+                listDiv.appendChild(card);
+            });
+        }
+
         function renderFaultyEdit(container) {
-            let activeLab = labProfiles[state.currentLab];
-            let item = activeLab ? activeLab.faultyList.find(i => i.id === state.editingId) : null;
-            state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
+            let item = labProfiles[state.currentLab].faultyList.find(i => i.id === state.editingId);
+            let statuses = ["Pending Repair", "Repaired", "Returned"];
+            let statusOpts = statuses.map(s => `<option value="${s}" ${item && item.status === s ? 'selected' : ''}>${s}</option>`).join('');
 
             container.innerHTML = `
-                ${renderImageEditorHTML()}
-                <label>📦 Stock List Number / Equipment Code:</label>
-                <input type="text" id="f-stock" placeholder="e.g. ST/P103/2015/E001" value="${item ? (item.stockCode || '') : ''}">
-
-                <label>⚙ Equipment Name:</label>
-                <input type="text" id="f-name" placeholder="e.g. Lathe Machine" value="${item ? item.name : ''}">
-
-                <label>🔧 Problem Description:</label>
-                <input type="text" id="f-problem" placeholder="e.g. Abnormal motor noise" value="${item ? item.problem : ''}">
-
-                <label>📅 Reported Date:</label>
-                <input type="date" id="f-date" value="${item ? item.date : new Date().toISOString().substring(0,10)}">
-
-                <label>📌 Repair Status:</label>
-                <select id="f-status">
-                    <option value="Pending Repair" ${item && item.status === 'Pending Repair' ? 'selected' : ''}>Pending Repair</option>
-                    <option value="Repaired" ${item && item.status === 'Repaired' ? 'selected' : ''}>Repaired</option>
-                    <option value="Returned" ${item && item.status === 'Returned' ? 'selected' : ''}>Returned</option>
-                </select>
-
-                <label>📝 Additional Remarks:</label>
-                <textarea id="f-remarks" placeholder="Enter repair action details">${item ? (item.remarks || '') : ''}</textarea>
-
-                <button class="btn btn-green" onclick="saveFaulty()">💾 Save Faulty Report</button>
-                ${item ? `<button class="btn btn-red" onclick="deleteSingleItem('faultyList', '${item.id}')">❌ Delete Report</button>` : ''}
+                <div class="card">
+                    <label>📦 Stock List Number / Equipment Code:</label>
+                    <input type="text" id="f-code" value="${item && item.stockCode ? item.stockCode : ''}">
+                    <label>⚙ Equipment Name:</label>
+                    <input type="text" id="f-name" value="${item ? item.name : ''}">
+                    <label>🔧 Problem Description:</label>
+                    <input type="text" id="f-problem" value="${item ? item.problem : ''}">
+                    <label>📅 Reported Date:</label>
+                    <input type="date" id="f-date" value="${item && item.date ? item.date : new Date().toISOString().split('T')[0]}">
+                    <label>📌 Repair Status:</label>
+                    <select id="f-status">${statusOpts}</select>
+                    <label>📝 Repair Notes / Remarks:</label>
+                    <input type="text" id="f-remarks" value="${item && item.remarks ? item.remarks : ''}">
+                    <button class="btn btn-green" onclick="saveFaulty()">💾 Save Faulty Report</button>
+                    ${item ? `<button class="btn btn-red" onclick="deleteFaulty('${item.id}')">❌ Delete Report</button>` : ''}
+                </div>
             `;
-            updateImagePreview();
         }
 
         function saveFaulty() {
+            let stockCode = document.getElementById('f-code').value.trim();
             let name = document.getElementById('f-name').value.trim();
-            let stockCode = document.getElementById('f-stock').value.trim();
             let problem = document.getElementById('f-problem').value.trim();
             let date = document.getElementById('f-date').value;
             let status = document.getElementById('f-status').value;
             let remarks = document.getElementById('f-remarks').value.trim();
-            if (!name) { alert("Enter Equipment Name!"); return; }
 
-            let activeLab = labProfiles[state.currentLab];
+            if (!name) { alert("Please enter Equipment Name!"); return; }
+
+            let list = labProfiles[state.currentLab].faultyList;
             if (state.editingId) {
-                let item = activeLab.faultyList.find(i => i.id === state.editingId);
-                if (item) { Object.assign(item, { stockCode, name, problem, date, status, remarks, imageUri: state.tempImgUri }); }
-                addLog(`Updated Faulty Report for: ${name} in ${state.currentLab}`);
+                let item = list.find(i => i.id === state.editingId);
+                if (item) { Object.assign(item, { stockCode, name, problem, date, status, remarks }); }
             } else {
-                let id = 'F-' + (activeLab.faultyList.length + 1);
-                activeLab.faultyList.push({ id, stockCode, name, problem, date, status, remarks, imageUri: state.tempImgUri });
-                addLog(`Created Faulty Report: ${name} in ${state.currentLab}`);
+                list.push({ id: 'F-' + (list.length + 1), stockCode, name, problem, date, status, remarks });
             }
             saveData();
             goBack();
         }
 
-        // 5. WRITE OFF LIST & EDIT
-        function renderWriteOffList(container) {
-            renderSearchBar(container, "Search Write Off Asset Name...", val => {});
-            let items = getFilteredCurrentItems();
-            renderSelectionBar(container, items.length);
+        function deleteFaulty(id) {
+            if (confirm("Delete this faulty report?")) {
+                let list = labProfiles[state.currentLab].faultyList;
+                labProfiles[state.currentLab].faultyList = list.filter(i => i.id !== id);
+                saveData();
+                goBack();
+            }
+        }
 
+        /* --- 4. ASSET WRITE OFF SECTION --- */
+        function renderWriteOffList(container) {
+            renderSearchBar(container, "Search Write Off Asset Name...", filterWriteOffUI);
             let listDiv = document.createElement('div');
-            items.forEach(item => {
-                let card = document.createElement('div');
-                card.className = 'item-card';
-                card.innerHTML = `
-                    <input type="checkbox" ${state.selectedIds.has(item.code) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.code}')">
-                    <div class="item-info">
-                        <h2>${item.code} · ${item.name}</h2>
-                        <p>Reason: ${item.reason} • <b>${item.status}</b></p>
-                    </div>
-                `;
-                card.onclick = () => switchScreen('WRITEOFF_EDIT', item.code);
-                listDiv.appendChild(card);
-            });
+            listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
+            filterWriteOffUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-red';
             addBtn.innerText = '＋ Add Write Off Proposal';
-            addBtn.onclick = () => { state.tempImgUri = null; switchScreen('WRITEOFF_EDIT', null); };
+            addBtn.onclick = () => switchScreen('WRITEOFF_EDIT', null);
             container.appendChild(addBtn);
         }
 
+        function filterWriteOffUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv || !labProfiles[state.currentLab]) return;
+            let q = state.searchQuery.toLowerCase();
+            let items = labProfiles[state.currentLab].writeOffList.filter(i => !q || i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
+
+            listDiv.innerHTML = '';
+            items.forEach(item => {
+                let card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `<h2>${item.name}</h2><p>Reason: ${item.reason} | Status: ${item.status || 'Pending'}</p>`;
+                card.onclick = () => switchScreen('WRITEOFF_EDIT', item.code);
+                listDiv.appendChild(card);
+            });
+        }
+
         function renderWriteOffEdit(container) {
-            let activeLab = labProfiles[state.currentLab];
-            let item = activeLab ? activeLab.writeOffList.find(i => i.code === state.editingId) : null;
-            state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
+            let item = labProfiles[state.currentLab].writeOffList.find(i => i.code === state.editingId);
+            let statuses = ["Pending", "Approved", "Not Approved"];
+            let statusOpts = statuses.map(s => `<option value="${s}" ${item && item.status === s ? 'selected' : ''}>${s}</option>`).join('');
 
             container.innerHTML = `
-                ${renderImageEditorHTML()}
-                <label>📦 Stock List Number / Asset Code:</label>
-                <input type="text" id="w-code" placeholder="e.g. AST-001" value="${item ? item.code : ''}">
-
-                <label>⚙ Equipment / Asset Name:</label>
-                <input type="text" id="w-name" placeholder="e.g. Hydraulic Pump" value="${item ? item.name : ''}">
-
-                <label>🗑 Reason for Write Off:</label>
-                <input type="text" id="w-reason" placeholder="e.g. Beyond economic repair" value="${item ? item.reason : ''}">
-
-                <label>📌 Write Off Status:</label>
-                <select id="w-status">
-                    <option value="Pending" ${item && item.status === 'Pending' ? 'selected' : ''}>Pending</option>
-                    <option value="Approved" ${item && item.status === 'Approved' ? 'selected' : ''}>Approved</option>
-                    <option value="Not Approved" ${item && item.status === 'Not Approved' ? 'selected' : ''}>Not Approved</option>
-                </select>
-
-                <label>📝 Additional Remarks:</label>
-                <textarea id="w-remarks" placeholder="Enter disposal approval notes">${item ? (item.remarks || '') : ''}</textarea>
-
-                <button class="btn btn-green" onclick="saveWriteOff()">💾 Save Write Off Proposal</button>
-                ${item ? `<button class="btn btn-red" onclick="deleteSingleItem('writeOffList', '${item.code}')">❌ Delete Proposal</button>` : ''}
+                <div class="card">
+                    <label>📦 Stock List Number / Asset Code:</label>
+                    <input type="text" id="w-code" value="${item ? item.code : ''}">
+                    <label>⚙ Equipment / Asset Name:</label>
+                    <input type="text" id="w-name" value="${item ? item.name : ''}">
+                    <label>🗑 Reason for Write Off:</label>
+                    <input type="text" id="w-reason" value="${item ? item.reason : ''}">
+                    <label>📌 Status:</label>
+                    <select id="w-status">${statusOpts}</select>
+                    <label>📝 Additional Remarks / Notes:</label>
+                    <input type="text" id="w-remarks" value="${item && item.remarks ? item.remarks : ''}">
+                    <button class="btn btn-green" onclick="saveWriteOff()">💾 Save Write Off Proposal</button>
+                    ${item ? `<button class="btn btn-red" onclick="deleteWriteOff('${item.code}')">❌ Delete Proposal</button>` : ''}
+                </div>
             `;
-            updateImagePreview();
         }
 
         function saveWriteOff() {
@@ -646,259 +499,158 @@
             let reason = document.getElementById('w-reason').value.trim();
             let status = document.getElementById('w-status').value;
             let remarks = document.getElementById('w-remarks').value.trim();
-            if (!code || !name) { alert("Enter Asset Code & Name!"); return; }
 
-            let activeLab = labProfiles[state.currentLab];
+            if (!code || !name) { alert("Please enter Asset Code and Name!"); return; }
+
+            let list = labProfiles[state.currentLab].writeOffList;
             if (state.editingId) {
-                let item = activeLab.writeOffList.find(i => i.code === state.editingId);
-                if (item) { Object.assign(item, { code, name, reason, status, remarks, imageUri: state.tempImgUri }); }
-                addLog(`Updated Write Off Proposal: ${code} in ${state.currentLab}`);
+                let item = list.find(i => i.code === state.editingId);
+                if (item) { Object.assign(item, { code, name, reason, status, remarks }); }
             } else {
-                activeLab.writeOffList.push({ code, name, reason, status, remarks, imageUri: state.tempImgUri });
-                addLog(`Created Write Off Proposal: ${code} (${name}) in ${state.currentLab}`);
+                list.push({ code, name, reason, status, remarks });
             }
             saveData();
             goBack();
         }
 
-        // IMAGE HANDLING HELPERS
-        function renderImageEditorHTML() {
-            return `
-                <div class="card text-center">
-                    <img id="img-preview" class="img-preview">
-                    <div class="row" style="margin-top:8px;">
-                        <button class="btn btn-blue btn-inline col" onclick="triggerCamera()">📸 Camera</button>
-                        <button class="btn btn-purple btn-inline col" onclick="triggerImageFile()">📁 Gallery</button>
-                        <button class="btn btn-red btn-inline col" onclick="removeImage()">🗑 Remove</button>
-                    </div>
-                </div>
-            `;
-        }
-
-        function updateImagePreview() {
-            let img = document.getElementById('img-preview');
-            if (img) {
-                if (state.tempImgUri && state.tempImgUri !== 'REMOVED') {
-                    img.src = state.tempImgUri;
-                    img.style.display = 'block';
-                } else {
-                    img.style.display = 'none';
-                }
-            }
-        }
-
-        function triggerCamera() { document.getElementById('camera-input-img').click(); }
-        function triggerImageFile() { document.getElementById('file-input-img').click(); }
-
-        function handleImageFileSelected(e) {
-            let file = e.target.files[0];
-            if (file) {
-                let reader = new FileReader();
-                reader.onload = (event) => {
-                    state.tempImgUri = event.target.result;
-                    updateImagePreview();
-                };
-                reader.readAsDataURL(file);
-            }
-        }
-
-        function removeImage() {
-            state.tempImgUri = 'REMOVED';
-            updateImagePreview();
-        }
-
-        function toggleItemSelection(id) {
-            if (state.selectedIds.has(id)) state.selectedIds.delete(id);
-            else state.selectedIds.add(id);
-            render();
-        }
-
-        function deleteSingleItem(listKey, id) {
-            if (confirm("Are you sure you want to delete this item?")) {
-                let activeLab = labProfiles[state.currentLab];
-                activeLab[listKey] = activeLab[listKey].filter(i => (i.id || i.code) !== id);
+        function deleteWriteOff(code) {
+            if (confirm("Delete this write off proposal?")) {
+                let list = labProfiles[state.currentLab].writeOffList;
+                labProfiles[state.currentLab].writeOffList = list.filter(i => i.code !== code);
                 saveData();
                 goBack();
             }
         }
 
-        // 6. MORE & LOGS SCREEN
+        /* --- MORE OPTIONS & CSV FUNCTIONALITIES --- */
         function renderMore(container) {
             container.innerHTML = `
                 <div class="card">
-                    <h2>App Information</h2>
-                    <p>Version: v1.2.0 (PWA Web Edition)</p>
-                    <button class="btn btn-purple" onclick="switchScreen('LOGS')">📜 View Activity Logs</button>
-                </div>
-
-                <div class="card">
-                    <h2>Data Import & Export</h2>
-                    <button class="btn btn-blue" onclick="triggerCSVImport(false)">📂 Import CSV File (Append Data)</button>
-                    <button class="btn btn-green" onclick="exportCSV()">📊 Export Data to CSV File</button>
-                    <button class="btn btn-red" onclick="triggerCSVImport(true)">⚠️ Overwrite & Replace Data from CSV</button>
+                    <h2>Data Import, Export & Overwrite</h2>
+                    <p style="margin-bottom:12px;">Manage inventory data via standard CSV files compatible with Excel.</p>
+                    <button class="btn btn-blue" onclick="triggerImport(false)">📂 Import CSV File (Append Data)</button>
+                    <button class="btn btn-green" onclick="exportToCSV()">📊 Export Data to CSV</button>
+                    <button class="btn btn-red" onclick="triggerImport(true)">⚠️ Overwrite & Replace Data from CSV</button>
                 </div>
             `;
         }
 
-        function renderLogs(container) {
-            let html = `<h2>📋 Historical Change History</h2>`;
-            if (activityLogs.length === 0) {
-                html += `<p>No activity logs recorded yet.</p>`;
-            } else {
-                activityLogs.forEach(log => {
-                    html += `<div class="card" style="padding:8px;"><p style="font-size:11px;">${log}</p></div>`;
-                });
-            }
-            container.innerHTML = html;
-        }
+        function exportToCSV() {
+            let profile = labProfiles[state.currentLab];
+            if (!profile) return;
 
-        // --- CSV IMPORT & EXPORT LOGIC ---
-        function triggerCSVImport(isOverwrite) {
-            state.isOverwriteMode = isOverwrite;
-            if (isOverwrite) {
-                if (!confirm(`⚠️ Warning: Are you sure you want to OVERWRITE all data for '${state.currentLab}'? This cannot be undone!`)) return;
-            }
-            document.getElementById('file-input-csv').click();
-        }
+            let csv = [];
+            csv.push(`Lab Location,"${state.currentLab}"`);
+            csv.push(`Generated Date,"${new Date().toISOString()}"\n`);
 
-        function handleCSVFileSelected(e) {
-            let file = e.target.files[0];
-            if (!file) return;
-
-            let reader = new FileReader();
-            reader.onload = (event) => {
-                parseAndImportCSV(event.target.result);
-            };
-            reader.readAsText(file);
-        }
-
-        function parseAndImportCSV(text) {
-            let lines = text.split('\n');
-            let fileLab = '';
-            let currentSection = '';
-            let count = 0;
-
-            lines.forEach(line => {
-                let l = line.trim();
-                if (l.startsWith('Lab Location,')) {
-                    let parts = l.split(',');
-                    if (parts.length > 1) fileLab = parts[1].replace(/"/g, '').trim();
-                }
+            // SECTION 1
+            csv.push("---------------------------------------------------------------------------------");
+            csv.push("SECTION 1: EQUIPMENT LIST");
+            csv.push("---------------------------------------------------------------------------------");
+            csv.push("No.,Equipment Code,Equipment Name");
+            profile.equipmentList.forEach((eq, i) => {
+                csv.push(`${i + 1},"${eq.code}","${eq.name}"`);
             });
+            if (profile.equipmentList.length === 0) csv.push("- No Equipment Items -,");
+            csv.push("\n");
 
-            if (fileLab) state.currentLab = fileLab;
-            if (!labProfiles[state.currentLab]) labProfiles[state.currentLab] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-
-            let activeLab = labProfiles[state.currentLab];
-
-            if (state.isOverwriteMode) {
-                activeLab.equipmentList = [];
-                activeLab.teachingList = [];
-                activeLab.faultyList = [];
-                activeLab.writeOffList = [];
-            }
-
-            lines.forEach(line => {
-                let l = line.trim();
-                if (!l) return;
-
-                if (l.includes('SECTION 1: EQUIPMENT LIST')) { currentSection = 'EQUIPMENT'; return; }
-                if (l.includes('SECTION 2: TEACHING MATERIALS ORDER')) { currentSection = 'TEACHING'; return; }
-                if (l.includes('SECTION 3: FAULTY / REPAIR REPORTS')) { currentSection = 'FAULTY'; return; }
-                if (l.includes('SECTION 4: ASSET WRITE OFF PROPOSALS')) { currentSection = 'WRITEOFF'; return; }
-
-                if (l.startsWith('No.,') || l.startsWith('Equipment Code,') || l.startsWith('Report ID,') || l.startsWith('Asset Code,')) return;
-
-                let tokens = parseCSVLine(l);
-                if (tokens.length < 2) return;
-
-                if (currentSection === 'EQUIPMENT') {
-                    let code = tokens[1] || tokens[0];
-                    let name = tokens[2] || tokens[1];
-                    if (code && name && !code.includes('No Equipment')) {
-                        if (!activeLab.equipmentList.some(i => i.code === code)) {
-                            activeLab.equipmentList.push({ code, name, imageUri: null });
-                            count++;
-                        }
-                    }
-                } else if (currentSection === 'TEACHING') {
-                    let name = tokens[1] || tokens[0];
-                    let qty = tokens[2] || tokens[1];
-                    let remarks = tokens[3] || '';
-                    if (name && !name.includes('No Teaching')) {
-                        activeLab.teachingList.push({ id: 'TM-' + Date.now() + '-' + count, name, qtyUnit: qty, remarks, imageUri: null });
-                        count++;
-                    }
-                } else if (currentSection === 'FAULTY') {
-                    if (tokens.length >= 4 && !tokens[0].includes('No Faulty')) {
-                        activeLab.faultyList.push({
-                            id: tokens[0], stockCode: tokens[1] || '', name: tokens[2] || tokens[1],
-                            problem: tokens[3] || tokens[2], date: tokens[4] || tokens[3],
-                            status: tokens[5] || 'Pending Repair', remarks: tokens[6] || '', imageUri: null
-                        });
-                        count++;
-                    }
-                } else if (currentSection === 'WRITEOFF') {
-                    if (tokens.length >= 3 && !tokens[0].includes('No Asset Write')) {
-                        activeLab.writeOffList.push({
-                            code: tokens[0], name: tokens[1], reason: tokens[2],
-                            status: tokens[3] || 'Pending', remarks: tokens[4] || '', imageUri: null
-                        });
-                        count++;
-                    }
-                }
+            // SECTION 2
+            csv.push("---------------------------------------------------------------------------------");
+            csv.push("SECTION 2: TEACHING MATERIALS ORDER");
+            csv.push("---------------------------------------------------------------------------------");
+            csv.push("No.,Item Name,Quantity Unit,Remarks");
+            profile.teachingList.forEach((tm, i) => {
+                csv.push(`${i + 1},"${tm.name}","${tm.qtyUnit}","${tm.remarks || ''}"`);
             });
+            if (profile.teachingList.length === 0) csv.push("- No Teaching Materials Order -,,,");
+            csv.push("\n");
 
-            saveData();
-            addLog(`${state.isOverwriteMode ? 'Overwritten' : 'Imported'} ${count} record(s) into ${state.currentLab}`);
-            alert(`Successfully imported ${count} record(s) into ${state.currentLab}!`);
-            switchScreen('HOME');
-        }
+            // SECTION 3
+            csv.push("---------------------------------------------------------------------------------");
+            csv.push("SECTION 3: FAULTY / REPAIR REPORTS");
+            csv.push("---------------------------------------------------------------------------------");
+            csv.push("Report ID,Stock Code,Asset Name,Problem Description,Reported Date,Status,Remarks");
+            profile.faultyList.forEach(f => {
+                csv.push(`"${f.id}","${f.stockCode || ''}","${f.name}","${f.problem}","${f.date}","${f.status || 'Pending Repair'}","${f.remarks || ''}"`);
+            });
+            if (profile.faultyList.length === 0) csv.push("- No Faulty Reports -,,,,,,");
+            csv.push("\n");
 
-        function parseCSVLine(line) {
-            let result = [], inQuotes = false, sb = '';
-            for (let i = 0; i < line.length; i++) {
-                let c = line.charAt(i);
-                if (c === '"') inQuotes = !inQuotes;
-                else if (c === ',' && !inQuotes) { result.push(sb.trim()); sb = ''; }
-                else sb += c;
-            }
-            result.push(sb.trim());
-            return result.map(s => s.replace(/^"|"$/g, '').replace(/""/g, '"'));
-        }
+            // SECTION 4
+            csv.push("---------------------------------------------------------------------------------");
+            csv.push("SECTION 4: ASSET WRITE OFF PROPOSALS");
+            csv.push("---------------------------------------------------------------------------------");
+            csv.push("Asset Code,Asset Name,Disposal Reason,Status,Remarks");
+            profile.writeOffList.forEach(w => {
+                csv.push(`"${w.code}","${w.name}","${w.reason}","${w.status || 'Pending'}","${w.remarks || ''}"`);
+            });
+            if (profile.writeOffList.length === 0) csv.push("- No Asset Write Off Proposals -,,,,");
 
-        function exportCSV() {
-            let activeLab = labProfiles[state.currentLab];
-            if (!activeLab) return;
-
-            let csv = `Lab Location,"${state.currentLab}"\nGenerated Date,"${new Date().toISOString()}"\n\n`;
-
-            csv += `---------------------------------------------------------------------------------\nSECTION 1: EQUIPMENT LIST\n---------------------------------------------------------------------------------\nNo.,Equipment Code,Equipment Name\n`;
-            activeLab.equipmentList.forEach((e, idx) => { csv += `${idx+1},"${e.code}","${e.name}"\n`; });
-
-            csv += `\n---------------------------------------------------------------------------------\nSECTION 2: TEACHING MATERIALS ORDER\n---------------------------------------------------------------------------------\nNo.,Item Name,Quantity Unit,Remarks\n`;
-            activeLab.teachingList.forEach((t, idx) => { csv += `${idx+1},"${t.name}","${t.qtyUnit}","${t.remarks||''}"\n`; });
-
-            csv += `\n---------------------------------------------------------------------------------\nSECTION 3: FAULTY / REPAIR REPORTS\n---------------------------------------------------------------------------------\nReport ID,Stock Code,Asset Name,Problem Description,Reported Date,Status,Remarks\n`;
-            activeLab.faultyList.forEach(f => { csv += `"${f.id}","${f.stockCode||''}","${f.name}","${f.problem}","${f.date}","${f.status}","${f.remarks||''}"\n`; });
-
-            csv += `\n---------------------------------------------------------------------------------\nSECTION 4: ASSET WRITE OFF PROPOSALS\n---------------------------------------------------------------------------------\nAsset Code,Asset Name,Disposal Reason,Status,Remarks\n`;
-            activeLab.writeOffList.forEach(w => { csv += `"${w.code}","${w.name}","${w.reason}","${w.status}","${w.remarks||''}"\n`; });
-
-            let blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            let blob = new Blob([csv.join("\n")], { type: "text/csv;charset=utf-8;" });
             let link = document.createElement("a");
             link.href = URL.createObjectURL(blob);
             link.download = `LabReport_${state.currentLab.replace(/\s+/g, '_')}.csv`;
             link.click();
         }
 
-        // INITIAL STARTUP
-        render();
-
-        // Register Service Worker for Offline PWA Support
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
+        function triggerImport(isOverwrite) {
+            state.isOverwriteMode = isOverwrite;
+            if (isOverwrite) {
+                if (!confirm(`Are you sure you want to OVERWRITE all existing data for location '${state.currentLab}'? This cannot be undone!`)) return;
+            }
+            document.getElementById('file-input-csv').click();
         }
+
+        function handleCSVImport(e) {
+            let file = e.target.files[0];
+            if (!file) return;
+
+            let reader = new FileReader();
+            reader.onload = function(evt) {
+                let lines = evt.target.result.split("\n");
+                let currentSection = "";
+                let profile = labProfiles[state.currentLab];
+
+                if (state.isOverwriteMode) {
+                    profile.equipmentList = [];
+                    profile.teachingList = [];
+                    profile.faultyList = [];
+                    profile.writeOffList = [];
+                }
+
+                lines.forEach(line => {
+                    let trimmed = line.trim();
+                    if (!trimmed) return;
+
+                    if (trimmed.includes("SECTION 1: EQUIPMENT LIST")) { currentSection = "EQUIPMENT"; return; }
+                    if (trimmed.includes("SECTION 2: TEACHING MATERIALS ORDER")) { currentSection = "TEACHING"; return; }
+                    if (trimmed.includes("SECTION 3: FAULTY / REPAIR REPORTS")) { currentSection = "FAULTY"; return; }
+                    if (trimmed.includes("SECTION 4: ASSET WRITE OFF PROPOSALS")) { currentSection = "WRITEOFF"; return; }
+
+                    if (trimmed.startsWith("No.,") || trimmed.startsWith("Report ID,") || trimmed.startsWith("Asset Code,")) return;
+
+                    let cols = trimmed.split(",").map(c => c.replace(/^"|"$/g, "").trim());
+
+                    if (currentSection === "EQUIPMENT" && cols.length >= 3) {
+                        if (!cols[1].includes("No Equipment")) profile.equipmentList.push({ code: cols[1], name: cols[2] });
+                    } else if (currentSection === "TEACHING" && cols.length >= 3) {
+                        if (!cols[1].includes("No Teaching Materials")) profile.teachingList.push({ id: 'TM-' + Date.now() + Math.random(), name: cols[1], qtyUnit: cols[2], remarks: cols[3] || '' });
+                    } else if (currentSection === "FAULTY" && cols.length >= 6) {
+                        if (!cols[0].includes("No Faulty")) profile.faultyList.push({ id: cols[0], stockCode: cols[1], name: cols[2], problem: cols[3], date: cols[4], status: cols[5], remarks: cols[6] || '' });
+                    } else if (currentSection === "WRITEOFF" && cols.length >= 4) {
+                        if (!cols[0].includes("No Asset Write Off")) profile.writeOffList.push({ code: cols[0], name: cols[1], reason: cols[2], status: cols[3], remarks: cols[4] || '' });
+                    }
+                });
+
+                saveData();
+                alert("CSV Data Imported Successfully!");
+                render();
+            };
+            reader.readAsText(file);
+            e.target.value = '';
+        }
+
+        render();
     </script>
 </body>
 </html>
