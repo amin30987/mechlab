@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Universal Multi-Location Lab Inventory</title>
+
+    <!-- Library khas untuk membaca fail Excel (.xls, .xlsx) dan .csv -->
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
         body { display: flex; flex-direction: column; min-height: 100vh; background-color: #ebf0f5; color: #0a192d; }
@@ -52,15 +56,13 @@
         <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
     </nav>
 
-    <input type="file" id="file-input-csv" accept=".csv" class="hidden" onchange="handleCSVImport(event)">
+    <!-- Terima fail CSV, XLS, dan XLSX -->
+    <input type="file" id="file-input-excel" accept=".csv, .xls, .xlsx" class="hidden" onchange="handleExcelImport(event)">
 
     <script>
         let state = { currentScreen: 'HOME', currentLab: '', searchQuery: '', editingId: null, screenStack: ['HOME'] };
 
-        // Struktur data fleksibel (akan dimasukkan semua lokasi secara automatik daripada fail)
         let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {};
-
-        // Senarai Change Logs
         let changeLogs = JSON.parse(localStorage.getItem('changeLogs')) || [];
 
         let labKeys = Object.keys(labProfiles);
@@ -72,7 +74,6 @@
             localStorage.setItem('currentLab', state.currentLab);
         }
 
-        /* --- MEREKOD PERUBAHAN SECARA UNIVERSAL --- */
         function logChange(location, category, actionType, remarks) {
             let now = new Date();
             let timestamp = now.getFullYear() + "-" + 
@@ -85,7 +86,7 @@
                 timestamp: timestamp,
                 location: location,
                 category: category,
-                actionType: actionType, // DITAMBAH, DIKEMAS KINI, DIPINDAHKAN, DIBUANG
+                actionType: actionType,
                 remarks: remarks
             });
             saveData();
@@ -156,16 +157,17 @@
                     <label>📍 Pilihan Lokasi / Makmal Aktif:</label>
                     <div class="row">
                         <select id="lab-select" onchange="onLabSwitched(this.value)" class="col">
-                            ${labs.length > 0 ? optionsHTML : '<option value="">-- Tiada Lokasi (Sila Import CSV / Tambah) --</option>'}
+                            ${labs.length > 0 ? optionsHTML : '<option value="">-- Tiada Lokasi (Sila Upload Fail CSV/XLS) --</option>'}
                         </select>
                         <button class="btn btn-green btn-inline" onclick="addLabPrompt()">＋ Tambah Lokasi</button>
                     </div>
                 </div>
 
+                <!-- UPLOAD DI ATAS, EXPORT DI BAWAH -->
                 <div>
+                    <button class="btn btn-purple" onclick="triggerImport()">📂 Upload Fail Excel / CSV (Auto-Detect Lokasi)</button>
                     <button class="btn btn-green" onclick="switchScreen('EQUIPMENT_LIST')">⚙ Senarai Peralatan & Pindahan Lokasi</button>
-                    <button class="btn btn-blue" onclick="switchScreen('LOGS')">📜 Papar Rekod Perubahan (CSV Audit Log)</button>
-                    <button class="btn btn-purple" onclick="triggerImport()">📂 Import Fail CSV (Auto-Detect Lokasi)</button>
+                    <button class="btn btn-blue" onclick="switchScreen('LOGS')">📜 Papar Rekod Perubahan (Audit Log)</button>
                 </div>
             `;
         }
@@ -190,7 +192,6 @@
             }
         }
 
-        /* --- FUNGSI PERALATAN & PINDAHAN DENGAN AUTO-CREATE LOKASI --- */
         function renderEquipmentList(container) {
             if (!state.currentLab || !labProfiles[state.currentLab]) {
                 container.innerHTML = `<div class="card text-center"><p>Sila pilih atau cipta lokasi terlebih dahulu.</p></div>`;
@@ -250,7 +251,6 @@
 
             if (!code || !name) { alert("Sila isi Kod dan Nama Peralatan!"); return; }
 
-            // Cipta profil lokasi secara dinamik jika lokasi destinasi belum wujud
             if (!labProfiles[targetLab]) {
                 labProfiles[targetLab] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
             }
@@ -259,7 +259,6 @@
             let targetList = labProfiles[targetLab].equipmentList;
 
             if (state.editingId) {
-                // Padam rekod asal dari lokasi lama
                 if (labProfiles[state.currentLab]) {
                     labProfiles[state.currentLab].equipmentList = currentList.filter(i => i.code !== state.editingId);
                 }
@@ -289,7 +288,6 @@
             }
         }
 
-        /* --- PAPARAN AUDIT LOG TERPERINCI --- */
         function renderLogs(container) {
             container.innerHTML = `
                 <div class="card">
@@ -329,7 +327,6 @@
             container.appendChild(logsCard);
         }
 
-        /* --- FUNGSI EKSPORT CSV CHANGE LOG --- */
         function exportLogsCSV() {
             if (changeLogs.length === 0) {
                 alert("Tiada rekod perubahan untuk dieksport!");
@@ -361,63 +358,77 @@
         }
 
         function triggerImport() {
-            document.getElementById('file-input-csv').click();
+            document.getElementById('file-input-excel').click();
         }
 
-        /* --- FUNGSI IMPORT CSV DENGAN AUTO-DETECT ALL LOCATIONS --- */
-        function handleCSVImport(e) {
+        /* --- FUNGSI PROSES FAIL EXCEL (.XLS, .XLSX, .CSV) MENGGUNAKAN SHEETJS --- */
+        function handleExcelImport(e) {
             let file = e.target.files[0];
             if (!file) return;
 
             let reader = new FileReader();
             reader.onload = function(evt) {
-                let lines = evt.target.result.split("\n");
-                let newLocationsFound = 0;
-                let itemsImported = 0;
+                try {
+                    let data = new Uint8Array(evt.target.result);
+                    let workbook = XLSX.read(data, { type: 'array' });
 
-                lines.forEach((line, index) => {
-                    if (index === 0 || !line.trim()) return; // Abaikan header
-                    let cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
+                    let newLocationsFound = 0;
+                    let itemsImported = 0;
 
-                    if (cols.length >= 3) {
-                        let labName = cols[0]; // Lajur pertama = Nama Lokasi
-                        let code = cols[1];    // Lajur kedua = Kod
-                        let name = cols[2];    // Lajur ketiga = Nama Peralatan
+                    // Mengimbas setiap Helaian (Sheet) dalam fail Excel
+                    workbook.SheetNames.forEach(sheetName => {
+                        let worksheet = workbook.Sheets[sheetName];
+                        let rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                        if (!labName) return;
+                        rows.forEach((cols, index) => {
+                            if (index === 0 || !cols || cols.length < 3) return; // Abaikan tajuk / baris kosong
 
-                        // Auto-create lokasi jika lokasi baharu dijumpai dalam fail CSV/XLS
-                        if (!labProfiles[labName]) {
-                            labProfiles[labName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-                            newLocationsFound++;
-                        }
+                            let labName = String(cols[0]).trim(); // Lajur A = Nama Lokasi
+                            let code = String(cols[1]).trim();    // Lajur B = Kod Stok
+                            let name = String(cols[2]).trim();    // Lajur C = Nama Peralatan
 
-                        // Elak duplicate item
-                        if (!labProfiles[labName].equipmentList.some(i => i.code === code)) {
-                            labProfiles[labName].equipmentList.push({ code, name });
-                            itemsImported++;
-                        }
-                    }
-                });
+                            if (!labName || labName === 'undefined') return;
 
-                let keys = Object.keys(labProfiles);
-                if (keys.length > 0 && !state.currentLab) state.currentLab = keys[0];
+                            if (!labProfiles[labName]) {
+                                labProfiles[labName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
+                                newLocationsFound++;
+                            }
 
-                logChange('MULTI-LOCATION', 'Import CSV', 'DITAMBAH', `Mengimport ${itemsImported} rekod data merentas ${newLocationsFound} lokasi baharu dari fail CSV.`);
-                saveData();
-                alert(`Berjaya! ${itemsImported} item diimport merentas ${newLocationsFound} lokasi baharu.`);
-                render();
+                            if (!labProfiles[labName].equipmentList.some(i => i.code === code)) {
+                                labProfiles[labName].equipmentList.push({ code, name });
+                                itemsImported++;
+                            }
+                        });
+                    });
+
+                    let keys = Object.keys(labProfiles);
+                    if (keys.length > 0 && !state.currentLab) state.currentLab = keys[0];
+
+                    logChange('MULTI-LOCATION', 'Import File', 'DITAMBAH', `Berjaya mengimport ${itemsImported} rekod dari fail "${file.name}".`);
+                    saveData();
+                    alert(`Berjaya! ${itemsImported} item diimport dari fail Excel/CSV.`);
+                    render();
+
+                } catch (err) {
+                    alert("Ralat semasa membaca fail! Pastikan fail tidak rosak.");
+                    console.error(err);
+                }
             };
-            reader.readAsText(file);
+            reader.readAsArrayBuffer(file);
             e.target.value = '';
         }
 
+        /* --- SUSUNAN LETAK: UPLOAD DI ATAS, EXPORT DI BAWAH --- */
         function renderMore(container) {
             container.innerHTML = `
                 <div class="card">
                     <h2>Pengurusan Sistem Universal</h2>
+                    
+                    <!-- UPLOAD DI ATAS -->
+                    <button class="btn btn-purple" onclick="triggerImport()">📂 Upload Fail Excel / CSV (Auto-Detect Lokasi)</button>
+                    
+                    <!-- EXPORT DI BAWAH -->
                     <button class="btn btn-green" onclick="exportLogsCSV()">📊 Export CSV Change Log (Semua Lokasi)</button>
-                    <button class="btn btn-purple" onclick="triggerImport()">📂 Import CSV (Auto-Detect Lokasi)</button>
                 </div>
             `;
         }
