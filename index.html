@@ -185,7 +185,7 @@
                     <button class="btn btn-purple" style="margin-top:0;" onclick="triggerImport()">📂 Upload Excel / CSV File (Auto-Detect Lab)</button>
                 </div>
 
-                <!-- ALL 4 MAIN CATEGORY BUTTONS RESTORED -->
+                <!-- ALL 4 MAIN CATEGORY BUTTONS -->
                 <div>
                     <button class="btn btn-green" onclick="switchScreen('EQUIPMENT_LIST')">⚙ Equipment List</button>
                     <button class="btn btn-purple" onclick="switchScreen('TEACHING_LIST')">📚 Teaching Materials</button>
@@ -567,7 +567,7 @@
                 items.forEach(item => {
                     let card = document.createElement('div');
                     card.className = 'item-card';
-                    card.innerHTML = `2>${item.name}</h2><p>Reason: ${item.reason} | Status: ${item.status || 'Pending'}</p>`;
+                    card.innerHTML = `<h2>${item.name}</h2><p>Reason: ${item.reason} | Status: ${item.status || 'Pending'}</p>`;
                     card.onclick = () => switchScreen('WRITEOFF_EDIT', item.code);
                     listDiv.appendChild(card);
                 });
