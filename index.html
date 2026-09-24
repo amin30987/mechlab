@@ -870,8 +870,7 @@
                     <p style="margin-bottom:8px;">Open or import inventory files (.xlsx, .xls, .csv). You can choose to append data or completely clear existing files.</p>
                     <button class="btn btn-green" onclick="triggerImport(false)">📂 Open / Merge File (Append Data)</button>
                     <button class="btn btn-orange" onclick="triggerImport(true)">🆕 Open New File (Overwrite Recent Data)</button>
-                    <button class="btn btn-blue" onclick="exportMasterInventoryData()">💾 Export Master Inventory Data (.xlsx)</button>
-                    <button class="btn btn-purple" onclick="exportCSVChangeLog()">📜 Export Activity Audit Logs (.xlsx)</button>
+                    <button class="btn btn-blue" onclick="exportMasterInventoryData()">💾 Export Complete Inventory Records (.xlsx)</button>
                 </div>
             `;
         }
@@ -915,75 +914,11 @@
                 let worksheet = XLSX.utils.aoa_to_sheet(rows);
                 worksheet['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 35 }, { wch: 20 }, { wch: 30 }];
                 
-                // Truncate sheet name if too long for Excel limit
                 let safeSheetName = loc.substring(0, 31);
                 XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName);
             });
 
-            XLSX.writeFile(workbook, `MechLab_Master_Inventory_${new Date().toISOString().slice(0,10)}.xlsx`);
-        }
-
-        /* --- EXPORT CHANGE LOG TO MULTI-TAB EXCEL (.XLSX) --- */
-        function exportCSVChangeLog() {
-            let filteredLogs = csvAuditLogs.filter(log => log.actionType !== 'SWITCHED' && isValidLocationName(log.location));
-
-            if (filteredLogs.length === 0) {
-                alert("No change logs available to export!");
-                return;
-            }
-
-            let categories = {
-                "Equipment List": [],
-                "Teaching Materials": [],
-                "Faulty Report": [],
-                "Asset Write Off": [],
-                "General & Import": []
-            };
-
-            filteredLogs.forEach((log) => {
-                let targetCategory = "General & Import";
-
-                if (log.category === "Equipment List") targetCategory = "Equipment List";
-                else if (log.category === "Teaching Materials") targetCategory = "Teaching Materials";
-                else if (log.category === "Faulty Report" || log.category === "Faulty / Repair") targetCategory = "Faulty Report";
-                else if (log.category === "Asset Write Off") targetCategory = "Asset Write Off";
-
-                categories[targetCategory].push(log);
-            });
-
-            let workbook = XLSX.utils.book_new();
-            let header = ["No.", "Timestamp", "Location", "Category", "Action Type", "Details"];
-
-            Object.keys(categories).forEach(catName => {
-                let logs = categories[catName];
-                let sheetData = [header];
-
-                logs.forEach((log, index) => {
-                    sheetData.push([
-                        index + 1,
-                        log.timestamp,
-                        log.location,
-                        log.category,
-                        log.actionType,
-                        log.details
-                    ]);
-                });
-
-                let worksheet = XLSX.utils.aoa_to_sheet(sheetData);
-
-                worksheet['!cols'] = [
-                    { wch: 6 },
-                    { wch: 20 },
-                    { wch: 15 },
-                    { wch: 20 },
-                    { wch: 15 },
-                    { wch: 60 }
-                ];
-
-                XLSX.utils.book_append_sheet(workbook, worksheet, catName);
-            });
-
-            XLSX.writeFile(workbook, `MechLab_Activity_Logs_${new Date().toISOString().slice(0,10)}.xlsx`);
+            XLSX.writeFile(workbook, `MechLab_Inventory_Records_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function triggerImport(isOverwrite = false) {
