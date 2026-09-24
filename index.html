@@ -3,104 +3,188 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Universal Multi-Location Lab Inventory</title>
-
-    <!-- SheetJS library to read Excel (.xls, .xlsx) and .csv files -->
+    <title>Mechanical Lab Inventory</title>
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#071827">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="MechLab">
+    
+    <!-- Pustaka SheetJS untuk Membaca & Menulis Fail Excel (.xlsx) -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-        body { display: flex; flex-direction: column; min-height: 100vh; background-color: #ebf0f5; color: #0a192d; }
-        header { background-color: #071827; color: white; display: flex; align-items: center; justify-content: space-between; padding: 0 16px; height: 56px; position: sticky; top: 0; z-index: 100; }
-        header h1 { font-size: 16px; font-weight: bold; }
+        
+        html, body {
+            min-height: 100%;
+            background-color: #ebf0f5; 
+            color: #0a192d;
+        }
+
+        body { 
+            display: flex; 
+            flex-direction: column; 
+            min-height: 100vh;
+        }
+
+        #pwa-install-banner {
+            background-color: #145b9d;
+            color: white;
+            padding: 10px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 13px;
+            font-weight: bold;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            position: sticky;
+            top: 0;
+            z-index: 101;
+        }
+
+        header { 
+            background-color: #071827; 
+            color: white; 
+            display: flex; 
+            align-items: center; 
+            justify-content: space-between; 
+            padding: 0 16px; 
+            height: 56px; 
+            flex-shrink: 0; 
+            width: 100%;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+        header h1 { font-size: 17px; font-weight: bold; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
         .btn-back { background-color: #145b9d; color: white; border: none; padding: 7px 14px; border-radius: 6px; font-size: 12px; font-weight: bold; cursor: pointer; }
-        main { flex: 1; padding: 16px; width: 100%; padding-bottom: 76px; }
-        .card { background-color: white; border-radius: 8px; border: 1px solid #b4c3d2; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+
+        main { 
+            flex: 1; 
+            padding: 16px; 
+            width: 100%; 
+            padding-bottom: 76px;
+        }
+        
+        .card { background-color: white; border-radius: 8px; border: 1px solid #b4c3d2; padding: 16px; margin-bottom: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); width: 100%; }
         .row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
         .col { flex: 1; }
-        h2 { font-size: 15px; font-weight: bold; color: #071827; margin-bottom: 6px; }
+        
+        h2 { font-size: 16px; font-weight: bold; color: #071827; margin-bottom: 6px; }
         p { font-size: 13px; color: #465564; }
         .text-center { text-align: center; }
+
         label { font-size: 13px; font-weight: bold; color: #071827; display: block; margin: 10px 0 4px 0; }
-        input[type="text"], input[type="date"], select { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background-color: white; }
-        .btn { width: 100%; padding: 12px; border: none; border-radius: 6px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; }
+        input[type="text"], input[type="date"], select, textarea { width: 100%; padding: 11px; border: 1px solid #ccc; border-radius: 6px; font-size: 13px; background-color: white; }
+        textarea { resize: vertical; min-height: 70px; }
+        
+        .btn { width: 100%; padding: 13px; border: none; border-radius: 6px; color: white; font-size: 14px; font-weight: bold; cursor: pointer; text-align: center; margin-top: 10px; }
         .btn-green { background-color: #249d6b; }
         .btn-blue { background-color: #145b9d; }
-        .btn-purple { background-color: #800080; }
         .btn-orange { background-color: #ef8b24; }
         .btn-red { background-color: #cc4c45; }
+        .btn-purple { background-color: #800080; }
+        .btn-navy { background-color: #071827; }
         .btn-inline { width: auto; padding: 8px 12px; margin-top: 0; font-size: 12px; }
-        nav { background-color: #071827; display: flex; height: 56px; width: 100%; position: fixed; bottom: 0; left: 0; z-index: 100; }
+
+        nav { 
+            background-color: #071827; 
+            display: flex; 
+            height: 56px; 
+            flex-shrink: 0; 
+            width: 100%; 
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+        }
         .tab-btn { flex: 1; background: none; border: none; color: white; font-size: 14px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-        .item-card { background: white; border: 1.5px solid #b4c3d2; border-radius: 6px; padding: 12px; margin-bottom: 8px; cursor: pointer; }
+        .tab-btn.active { background-color: #145b9d; }
+
+        .item-card { display: flex; align-items: center; background: white; border: 1.5px solid #b4c3d2; border-radius: 6px; padding: 12px; margin-bottom: 8px; gap: 10px; cursor: pointer; width: 100%; }
+        .item-card input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
+        .item-info { flex: 1; }
+        .item-thumb { width: 48px; height: 48px; object-fit: cover; border-radius: 4px; }
+        
+        .img-preview { width: 100%; max-height: 160px; object-fit: contain; margin-top: 8px; border-radius: 4px; background: #eee; display: none; }
         .hidden { display: none !important; }
-        .log-tag { display: inline-block; padding: 3px 8px; border-radius: 4px; font-size: 11px; font-weight: bold; color: white; }
-        .tag-add { background-color: #249d6b; }
-        .tag-update { background-color: #145b9d; }
-        .tag-transfer { background-color: #800080; }
-        .tag-delete { background-color: #cc4c45; }
     </style>
 </head>
 <body>
 
+    <div id="pwa-install-banner" class="hidden">
+        <span>📲 Install MechLab App?</span>
+        <div>
+            <button class="btn btn-green btn-inline" onclick="installPWA()">Install</button>
+            <button class="btn btn-red btn-inline" onclick="hideInstallBanner()">✕</button>
+        </div>
+    </div>
+
     <header>
-        <h1 id="header-title">Lab Inventory Management</h1>
+        <h1 id="header-title">Mechanical Lab</h1>
         <button id="back-btn" class="btn-back hidden" onclick="goBack()">← BACK</button>
     </header>
 
     <main id="app-content"></main>
 
     <nav>
-        <button class="tab-btn" onclick="switchScreen('HOME')">📋 Menu</button>
-        <button class="tab-btn" onclick="switchScreen('LOGS')">📜 Audit Log</button>
+        <button class="tab-btn active" onclick="switchScreen('HOME')">📊 Dashboard</button>
         <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
     </nav>
 
-    <!-- Accept CSV, XLS, and XLSX files -->
-    <input type="file" id="file-input-excel" accept=".csv, .xls, .xlsx" class="hidden" onchange="handleExcelImport(event)">
+    <input type="file" id="file-input-excel" accept=".xlsx, .xls" class="hidden" onchange="handleExcelFileSelected(event)">
+    <input type="file" id="file-input-img" accept="image/*" class="hidden" onchange="handleImageFileSelected(event)">
+    <input type="file" id="camera-input-img" accept="image/*" capture="environment" class="hidden" onchange="handleImageFileSelected(event)">
 
     <script>
-        let state = { currentScreen: 'HOME', currentLab: '', searchQuery: '', editingId: null, screenStack: ['HOME'] };
+        let state = {
+            currentScreen: 'HOME',
+            currentLab: '',
+            searchQuery: '',
+            selectedIds: new Set(),
+            editingId: null,
+            tempImgUri: null,
+            screenStack: ['HOME']
+        };
 
-        // Flexible lab profiles structure
         let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {};
-
-        // Audit Logs array
-        let changeLogs = JSON.parse(localStorage.getItem('changeLogs')) || [];
+        let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
+        let rawWorkbookBinary = localStorage.getItem('rawWorkbookBinary') || null;
+        let originalFileName = localStorage.getItem('originalFileName') || "FOET_Mechanical_Engineering_Department_Asset_2024.xlsx";
 
         let labKeys = Object.keys(labProfiles);
         state.currentLab = localStorage.getItem('currentLab') || (labKeys.length > 0 ? labKeys[0] : '');
 
         function saveData() {
             localStorage.setItem('labProfiles', JSON.stringify(labProfiles));
-            localStorage.setItem('changeLogs', JSON.stringify(changeLogs));
+            localStorage.setItem('activityLogs', JSON.stringify(activityLogs));
             localStorage.setItem('currentLab', state.currentLab);
+            localStorage.setItem('originalFileName', originalFileName);
+            if (rawWorkbookBinary) {
+                try {
+                    localStorage.setItem('rawWorkbookBinary', rawWorkbookBinary);
+                } catch(e) {
+                    console.warn("Storage quota exceeded.");
+                }
+            }
         }
 
-        /* --- AUDIT LOGGING --- */
-        function logChange(location, category, actionType, remarks) {
-            let now = new Date();
-            let timestamp = now.getFullYear() + "-" + 
-                            String(now.getMonth() + 1).padStart(2, '0') + "-" + 
-                            String(now.getDate()).padStart(2, '0') + " " + 
-                            String(now.getHours()).padStart(2, '0') + ":" + 
-                            String(now.getMinutes()).padStart(2, '0');
-            
-            changeLogs.unshift({
-                timestamp: timestamp,
-                location: location,
-                category: category,
-                actionType: actionType, // ADDED, UPDATED, MOVED, DELETED
-                remarks: remarks
-            });
+        function addLog(action) {
+            let timestamp = new Date().toISOString().replace('T', ' ').substring(0, 19);
+            activityLogs.unshift(`[${timestamp}] ${action}`);
             saveData();
         }
 
         function switchScreen(screen, editingId = null) {
             state.currentScreen = screen;
             state.editingId = editingId;
+            state.selectedIds.clear();
             state.searchQuery = '';
-            if (state.screenStack[state.screenStack.length - 1] !== screen) state.screenStack.push(screen);
+            
+            if (state.screenStack[state.screenStack.length - 1] !== screen) {
+                state.screenStack.push(screen);
+            }
             render();
             window.scrollTo(0, 0);
         }
@@ -109,6 +193,7 @@
             if (state.screenStack.length > 1) {
                 state.screenStack.pop();
                 state.currentScreen = state.screenStack[state.screenStack.length - 1];
+                state.selectedIds.clear();
                 state.searchQuery = '';
                 render();
                 window.scrollTo(0, 0);
@@ -122,8 +207,11 @@
 
             headerTitle.innerText = state.currentLab ? `${getScreenTitle(state.currentScreen)} · ${state.currentLab}` : getScreenTitle(state.currentScreen);
             
-            if (state.screenStack.length > 1) backBtn.classList.remove('hidden');
-            else backBtn.classList.add('hidden');
+            if (state.screenStack.length > 1) {
+                backBtn.classList.remove('hidden');
+            } else {
+                backBtn.classList.add('hidden');
+            }
 
             content.innerHTML = '';
 
@@ -137,90 +225,97 @@
                 case 'FAULTY_EDIT': renderFaultyEdit(content); break;
                 case 'WRITEOFF_LIST': renderWriteOffList(content); break;
                 case 'WRITEOFF_EDIT': renderWriteOffEdit(content); break;
-                case 'LOGS': renderLogs(content); break;
                 case 'MORE': renderMore(content); break;
+                case 'LOGS': renderLogs(content); break;
             }
         }
 
         function getScreenTitle(screen) {
             switch(screen) {
-                case 'HOME': return 'Lab Inventory';
+                case 'HOME': return 'Mechanical Lab';
                 case 'EQUIPMENT_LIST': return 'Equipment List';
                 case 'EQUIPMENT_EDIT': return state.editingId ? 'Edit Equipment' : 'Add Equipment';
                 case 'TEACHING_LIST': return 'Teaching Materials';
-                case 'TEACHING_EDIT': return state.editingId ? 'Edit Teaching Item' : 'Add Teaching Item';
+                case 'TEACHING_EDIT': return state.editingId ? 'Edit Teaching Material' : 'Add Teaching Material';
                 case 'FAULTY_LIST': return 'Faulty / Repair';
                 case 'FAULTY_EDIT': return state.editingId ? 'Edit Faulty Report' : 'Add Faulty Report';
                 case 'WRITEOFF_LIST': return 'Asset Write Off';
                 case 'WRITEOFF_EDIT': return state.editingId ? 'Edit Write Off' : 'Add Write Off';
-                case 'LOGS': return 'Audit Logs';
                 case 'MORE': return 'More Options';
-                default: return 'Lab Inventory';
+                case 'LOGS': return 'Activity Logs';
+                default: return 'Mechanical Lab';
             }
         }
 
         function renderHome(container) {
             let labs = Object.keys(labProfiles);
-            let optionsHTML = labs.map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('');
+            let optionsHTML = labs.length > 0 
+                ? labs.map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('')
+                : `<option value="">-- No Lab Created Yet --</option>`;
 
-            container.innerHTML = `
-                <div class="card text-center">
-                    <h2>MULTI-LOCATION INVENTORY</h2>
-                    <p>Total Detected Locations: <strong>${labs.length} Locations</strong></p>
+            let html = `
+                <div class="text-center" style="margin-bottom: 16px;">
+                    <h2 style="font-size: 22px; color:#071827;">WELCOME</h2>
+                    <p id="clock-display" style="color:#64748b; font-weight:500;">${new Date().toLocaleString()}</p>
                 </div>
 
                 <div class="card">
-                    <label>📍 Active Lab Location:</label>
+                    <label style="margin-top:0;">📍 Active Lab Location:</label>
                     <div class="row">
                         <select id="lab-select" onchange="onLabSwitched(this.value)" class="col">
-                            ${labs.length > 0 ? optionsHTML : '<option value="">-- No Lab Selected (Upload Excel/CSV) --</option>'}
+                            ${optionsHTML}
                         </select>
-                        <button class="btn btn-green btn-inline" onclick="addLabPrompt()">＋ Add Lab</button>
-                        ${labs.length > 0 ? `<button class="btn btn-red btn-inline" onclick="deleteLabPrompt()">🗑</button>` : ''}
+                        <button class="btn btn-green btn-inline" onclick="addLabPrompt()">＋ Add</button>
+                        ${state.currentLab ? `<button class="btn btn-red btn-inline" onclick="deleteLabPrompt()">🗑</button>` : ''}
                     </div>
                 </div>
 
-                <!-- UPLOAD BUTTON AT TOP -->
-                <div class="card">
-                    <button class="btn btn-purple" style="margin-top:0;" onclick="triggerImport()">📂 Upload Excel / CSV File (Auto-Detect Lab)</button>
-                </div>
-
-                <!-- ALL 4 MAIN CATEGORY BUTTONS -->
                 <div>
-                    <button class="btn btn-green" onclick="switchScreen('EQUIPMENT_LIST')">⚙ Equipment List</button>
-                    <button class="btn btn-purple" onclick="switchScreen('TEACHING_LIST')">📚 Teaching Materials</button>
-                    <button class="btn btn-orange" onclick="switchScreen('FAULTY_LIST')">🔧 Faulty / Repair</button>
-                    <button class="btn btn-red" onclick="switchScreen('WRITEOFF_LIST')">🗑 Asset to Write Off</button>
-                    <button class="btn btn-blue" onclick="switchScreen('LOGS')">📜 View Change Logs (Audit Trail)</button>
+                    <button class="btn btn-green" onclick="checkLabAndNavigate('EQUIPMENT_LIST')">⚙ Equipment List<br><span style="font-size:11px;font-weight:normal;">Lab equipment & apparatus</span></button>
+                    <button class="btn btn-purple" onclick="checkLabAndNavigate('TEACHING_LIST')">📚 Teaching Materials<br><span style="font-size:11px;font-weight:normal;">Teaching materials to order</span></button>
+                    <button class="btn btn-orange" onclick="checkLabAndNavigate('FAULTY_LIST')">🔧 Faulty / Repair<br><span style="font-size:11px;font-weight:normal;">Report & track issues</span></button>
+                    <button class="btn btn-red" onclick="checkLabAndNavigate('WRITEOFF_LIST')">🗑 Asset to Write Off<br><span style="font-size:11px;font-weight:normal;">List & disposal status</span></button>
                 </div>
             `;
+            container.innerHTML = html;
+        }
+
+        function checkLabAndNavigate(screen) {
+            if (!state.currentLab) {
+                alert("Sila tambah atau pilih 'Lab Location' terlebih dahulu!");
+                return;
+            }
+            switchScreen(screen);
         }
 
         function onLabSwitched(newLab) {
             state.currentLab = newLab;
             saveData();
+            if (newLab) addLog(`Switched active lab location to: ${newLab}`);
             render();
         }
 
         function addLabPrompt() {
-            let name = prompt("Enter New Lab Location Name (e.g. P103, N101, SE008):");
+            let name = prompt("Enter New Lab Location Name:");
             if (name && name.trim()) {
                 name = name.trim();
                 if (!labProfiles[name]) {
                     labProfiles[name] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                     state.currentLab = name;
-                    logChange(name, 'Location', 'ADDED', `Created new lab location: ${name}`);
                     saveData();
+                    addLog(`Created new Lab Location: ${name}`);
                     render();
-                } else alert("This lab location already exists!");
+                } else {
+                    alert("Lab location already exists!");
+                }
             }
         }
 
         function deleteLabPrompt() {
             if (!state.currentLab) return;
-            if (confirm(`Are you sure you want to delete lab location '${state.currentLab}' and all its records?`)) {
-                logChange(state.currentLab, 'Location', 'DELETED', `Deleted lab location: ${state.currentLab}`);
+            if (confirm(`Are you sure you want to delete lab location '${state.currentLab}'?\nAll records inside will be permanently removed!`)) {
                 delete labProfiles[state.currentLab];
+                addLog(`Deleted lab profile: ${state.currentLab}`);
                 let keys = Object.keys(labProfiles);
                 state.currentLab = keys.length > 0 ? keys[0] : '';
                 saveData();
@@ -228,373 +323,368 @@
             }
         }
 
-        function renderSearchBar(container, placeholder, onFilter) {
+        /* --- FIX CARIAN (MENGELAKKAN LOSS OF FOCUS) --- */
+        function renderSearchBar(container, placeholder) {
             let searchDiv = document.createElement('div');
-            searchDiv.innerHTML = `<input type="text" placeholder="🔍 ${placeholder}" value="${state.searchQuery}">`;
+            searchDiv.innerHTML = `<input type="text" id="search-input-field" placeholder="🔍 ${placeholder}" value="${state.searchQuery}">`;
             container.appendChild(searchDiv);
-            searchDiv.querySelector('input').addEventListener('input', function(e) {
+
+            let inputElem = searchDiv.querySelector('#search-input-field');
+            inputElem.addEventListener('input', function(e) {
                 state.searchQuery = e.target.value;
-                onFilter();
+                filterListUI();
             });
         }
 
-        /* --- 1. EQUIPMENT SECTION --- */
-        function renderEquipmentList(container) {
-            if (!state.currentLab || !labProfiles[state.currentLab]) {
-                container.innerHTML = `<div class="card text-center"><p>Please select or create a lab location first.</p></div>`;
+        function filterListUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv) return;
+            let items = getFilteredCurrentItems();
+
+            listDiv.innerHTML = '';
+            items.forEach(item => {
+                let card = document.createElement('div');
+                card.className = 'item-card';
+                card.innerHTML = `
+                    <input type="checkbox" ${state.selectedIds.has(item.code || item.id) ? 'checked' : ''} onclick="event.stopPropagation(); toggleItemSelection('${item.code || item.id}')">
+                    <div class="item-info">
+                        <h2>${item.name}</h2>
+                    </div>
+                    ${item.imageUri ? `<img src="${item.imageUri}" class="item-thumb">` : ''}
+                `;
+                card.onclick = () => switchScreen(getEditScreenName(), item.code || item.id);
+                listDiv.appendChild(card);
+            });
+        }
+
+        function getEditScreenName() {
+            if (state.currentScreen === 'EQUIPMENT_LIST') return 'EQUIPMENT_EDIT';
+            if (state.currentScreen === 'TEACHING_LIST') return 'TEACHING_EDIT';
+            if (state.currentScreen === 'FAULTY_LIST') return 'FAULTY_EDIT';
+            if (state.currentScreen === 'WRITEOFF_LIST') return 'WRITEOFF_EDIT';
+        }
+
+        function matchesQuery(text, query) {
+            if (!query.trim()) return true;
+            if (!text) return false;
+            return text.toLowerCase().includes(query.toLowerCase());
+        }
+
+        function renderSelectionBar(container, totalCount) {
+            let isAllSelected = totalCount > 0 && state.selectedIds.size === totalCount;
+            let bar = document.createElement('div');
+            bar.className = 'row card';
+            bar.style.padding = '10px';
+            bar.innerHTML = `
+                <label class="col" style="margin:0;"><input type="checkbox" ${isAllSelected ? 'checked' : ''} onchange="toggleSelectAll(this.checked, ${totalCount})"> Select All (${state.selectedIds.size}/${totalCount})</label>
+                <button class="btn btn-red btn-inline" onclick="confirmDeleteSelected()">🗑 Delete (${state.selectedIds.size})</button>
+            `;
+            container.appendChild(bar);
+        }
+
+        function toggleSelectAll(checked, totalCount) {
+            let activeLab = labProfiles[state.currentLab];
+            state.selectedIds.clear();
+            if (checked && activeLab) {
+                let items = getFilteredCurrentItems();
+                items.forEach(item => state.selectedIds.add(item.id || item.code));
+            }
+            render();
+        }
+
+        function confirmDeleteSelected() {
+            if (state.selectedIds.size === 0) {
+                alert("Please select at least one item!");
                 return;
             }
+            if (confirm(`Delete ${state.selectedIds.size} item(s) from ${state.currentLab}?`)) {
+                let activeLab = labProfiles[state.currentLab];
+                if (state.currentScreen === 'EQUIPMENT_LIST') activeLab.equipmentList = activeLab.equipmentList.filter(i => !state.selectedIds.has(i.code));
+                if (state.currentScreen === 'TEACHING_LIST') activeLab.teachingList = activeLab.teachingList.filter(i => !state.selectedIds.has(i.id));
+                if (state.currentScreen === 'FAULTY_LIST') activeLab.faultyList = activeLab.faultyList.filter(i => !state.selectedIds.has(i.id));
+                if (state.currentScreen === 'WRITEOFF_LIST') activeLab.writeOffList = activeLab.writeOffList.filter(i => !state.selectedIds.has(i.code));
 
-            renderSearchBar(container, "Search Equipment Name / Code...", filterEquipmentUI);
+                addLog(`Deleted ${state.selectedIds.size} item(s) from ${state.currentLab}`);
+                state.selectedIds.clear();
+                saveData();
+                render();
+            }
+        }
+
+        function getFilteredCurrentItems() {
+            let activeLab = labProfiles[state.currentLab];
+            if (!activeLab) return [];
+            let q = state.searchQuery;
+
+            if (state.currentScreen === 'EQUIPMENT_LIST') return activeLab.equipmentList.filter(i => matchesQuery(i.name, q) || matchesQuery(i.code, q));
+            if (state.currentScreen === 'TEACHING_LIST') return activeLab.teachingList.filter(i => matchesQuery(i.name, q));
+            if (state.currentScreen === 'FAULTY_LIST') return activeLab.faultyList.filter(i => matchesQuery(i.name, q) || matchesQuery(i.stockCode, q));
+            if (state.currentScreen === 'WRITEOFF_LIST') return activeLab.writeOffList.filter(i => matchesQuery(i.name, q) || matchesQuery(i.code, q));
+            return [];
+        }
+
+        function renderEquipmentList(container) {
+            renderSearchBar(container, "Search Equipment Name...");
+            let items = getFilteredCurrentItems();
+            renderSelectionBar(container, items.length);
 
             let listDiv = document.createElement('div');
             listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
-            filterEquipmentUI();
+            filterListUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-green';
-            addBtn.innerText = '＋ Add New Equipment';
-            addBtn.onclick = () => switchScreen('EQUIPMENT_EDIT', null);
+            addBtn.innerText = '＋ Add Equipment';
+            addBtn.onclick = () => { state.tempImgUri = null; switchScreen('EQUIPMENT_EDIT', null); };
             container.appendChild(addBtn);
         }
 
-        function filterEquipmentUI() {
-            let listDiv = document.getElementById('items-list-container');
-            if (!listDiv || !labProfiles[state.currentLab]) return;
-            let q = state.searchQuery.toLowerCase();
-            let items = labProfiles[state.currentLab].equipmentList.filter(i => !q || i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
-
-            listDiv.innerHTML = '';
-            if (items.length === 0) {
-                listDiv.innerHTML = `<div class="card"><p>No equipment found in this lab location.</p></div>`;
-            } else {
-                items.forEach(item => {
-                    let card = document.createElement('div');
-                    card.className = 'item-card';
-                    card.innerHTML = `<h2>${item.name}</h2><p>Stock Code: ${item.code}</p>`;
-                    card.onclick = () => switchScreen('EQUIPMENT_EDIT', item.code);
-                    listDiv.appendChild(card);
-                });
-            }
-        }
-
         function renderEquipmentEdit(container) {
-            let item = labProfiles[state.currentLab] ? labProfiles[state.currentLab].equipmentList.find(i => i.code === state.editingId) : null;
-            let labOptions = Object.keys(labProfiles).map(l => `<option value="${l}" ${l === state.currentLab ? 'selected' : ''}>${l}</option>`).join('');
+            let activeLab = labProfiles[state.currentLab];
+            let item = activeLab ? activeLab.equipmentList.find(i => i.code === state.editingId) : null;
+            state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
+
+            let labsOptions = Object.keys(labProfiles).map(l => 
+                `<option value="${l}" ${l === state.currentLab ? 'selected' : ''}>${l}</option>`
+            ).join('');
 
             container.innerHTML = `
-                <div class="card">
-                    <label>📦 Stock Code / Equipment Code:</label>
-                    <input type="text" id="eq-code" value="${item ? item.code : ''}">
-                    
-                    <label>⚙ Equipment Name:</label>
-                    <input type="text" id="eq-name" value="${item ? item.name : ''}">
+                ${renderImageEditorHTML()}
+                <label>📦 Stock List Number / Equipment Code:</label>
+                <input type="text" id="eq-code" placeholder="e.g. ST/P103/2015/E001" value="${item ? item.code : ''}">
+                
+                <label>⚙ Equipment Name:</label>
+                <input type="text" id="eq-name" placeholder="e.g. Governors Apparatus" value="${item ? item.name : ''}">
 
-                    <label>📍 Lab Location (Select to Transfer):</label>
-                    <select id="eq-target-lab">${labOptions}</select>
+                <label>📍 Location / Room (Transfer Equipment):</label>
+                <select id="eq-lab-target">
+                    ${labsOptions}
+                </select>
 
-                    <button class="btn btn-green" onclick="saveEquipment()">💾 Save / Transfer Equipment</button>
-                    ${item ? `<button class="btn btn-red" onclick="deleteEquipment('${item.code}')">❌ Delete Equipment</button>` : ''}
-                </div>
+                <button class="btn btn-green" onclick="saveEquipment()">💾 Save Equipment</button>
+                ${item ? `<button class="btn btn-red" onclick="deleteSingleItem('equipmentList', '${item.code}')">❌ Delete Equipment</button>` : ''}
             `;
+            updateImagePreview();
         }
 
         function saveEquipment() {
             let code = document.getElementById('eq-code').value.trim();
             let name = document.getElementById('eq-name').value.trim();
-            let targetLab = document.getElementById('eq-target-lab').value;
+            let targetLab = document.getElementById('eq-lab-target').value;
+            if (!code || !name) { alert("Enter Stock Code and Equipment Name!"); return; }
 
-            if (!code || !name) { alert("Please enter Code and Equipment Name!"); return; }
-
-            if (!labProfiles[targetLab]) {
-                labProfiles[targetLab] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-            }
-
-            let currentList = labProfiles[state.currentLab] ? labProfiles[state.currentLab].equipmentList : [];
-            let targetList = labProfiles[targetLab].equipmentList;
+            let currentProfile = labProfiles[state.currentLab];
+            let targetProfile = labProfiles[targetLab];
 
             if (state.editingId) {
-                if (labProfiles[state.currentLab]) {
-                    labProfiles[state.currentLab].equipmentList = currentList.filter(i => i.code !== state.editingId);
-                }
-                targetList.push({ code, name });
-
-                if (state.currentLab !== targetLab) {
-                    logChange(`${state.currentLab} → ${targetLab}`, 'Equipment List', 'MOVED', `Equipment "${name}" (${code}) moved from ${state.currentLab} to ${targetLab}`);
+                if (targetLab !== state.currentLab) {
+                    let existingItem = currentProfile.equipmentList.find(i => i.code === state.editingId);
+                    // DUA-WAY REMOVAL: Dipadam daripada lokasi asal secara terus
+                    currentProfile.equipmentList = currentProfile.equipmentList.filter(i => i.code !== state.editingId);
+                    
+                    targetProfile.equipmentList.push({ 
+                        code, 
+                        name, 
+                        imageUri: state.tempImgUri,
+                        extraCells: existingItem ? existingItem.extraCells : {}
+                    });
+                    addLog(`Transferred Equipment ${code} from ${state.currentLab} to ${targetLab}`);
                 } else {
-                    logChange(state.currentLab, 'Equipment List', 'UPDATED', `Updated equipment details: "${name}" (${code})`);
+                    let item = currentProfile.equipmentList.find(i => i.code === state.editingId);
+                    if (item) { item.code = code; item.name = name; item.imageUri = state.tempImgUri; }
+                    addLog(`Updated Equipment: ${code} in ${state.currentLab}`);
                 }
             } else {
-                targetList.push({ code, name });
-                logChange(targetLab, 'Equipment List', 'ADDED', `Added new equipment: "${name}" (${code})`);
+                targetProfile.equipmentList.push({ code, name, imageUri: state.tempImgUri, extraCells: {} });
+                addLog(`Added Equipment: ${code} (${name}) in ${targetLab}`);
             }
 
             saveData();
             goBack();
         }
 
-        function deleteEquipment(code) {
-            let item = labProfiles[state.currentLab].equipmentList.find(i => i.code === code);
-            if (confirm(`Are you sure you want to delete equipment "${item.name}"?`)) {
-                labProfiles[state.currentLab].equipmentList = labProfiles[state.currentLab].equipmentList.filter(i => i.code !== code);
-                logChange(state.currentLab, 'Equipment List', 'DELETED', `Deleted equipment: "${item.name}" (${code})`);
-                saveData();
-                goBack();
-            }
-        }
-
-        /* --- 2. TEACHING MATERIALS SECTION --- */
         function renderTeachingList(container) {
-            if (!state.currentLab || !labProfiles[state.currentLab]) {
-                container.innerHTML = `<div class="card text-center"><p>Please select or create a lab location first.</p></div>`;
-                return;
-            }
-
-            renderSearchBar(container, "Search Teaching Material Name...", filterTeachingUI);
+            renderSearchBar(container, "Search Teaching Material Name...");
+            let items = getFilteredCurrentItems();
+            renderSelectionBar(container, items.length);
 
             let listDiv = document.createElement('div');
             listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
-            filterTeachingUI();
+            filterListUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-purple';
             addBtn.innerText = '＋ Add Teaching Material Order';
-            addBtn.onclick = () => switchScreen('TEACHING_EDIT', null);
+            addBtn.onclick = () => { state.tempImgUri = null; switchScreen('TEACHING_EDIT', null); };
             container.appendChild(addBtn);
         }
 
-        function filterTeachingUI() {
-            let listDiv = document.getElementById('items-list-container');
-            if (!listDiv || !labProfiles[state.currentLab]) return;
-            let q = state.searchQuery.toLowerCase();
-            let items = labProfiles[state.currentLab].teachingList.filter(i => !q || i.name.toLowerCase().includes(q));
-
-            listDiv.innerHTML = '';
-            if (items.length === 0) {
-                listDiv.innerHTML = `<div class="card"><p>No teaching materials found in this lab location.</p></div>`;
-            } else {
-                items.forEach(item => {
-                    let card = document.createElement('div');
-                    card.className = 'item-card';
-                    card.innerHTML = `<h2>${item.name}</h2><p>Qty: ${item.qtyUnit} ${item.remarks ? '| ' + item.remarks : ''}</p>`;
-                    card.onclick = () => switchScreen('TEACHING_EDIT', item.id);
-                    listDiv.appendChild(card);
-                });
-            }
-        }
-
         function renderTeachingEdit(container) {
-            let item = labProfiles[state.currentLab] ? labProfiles[state.currentLab].teachingList.find(i => i.id === state.editingId) : null;
+            let activeLab = labProfiles[state.currentLab];
+            let item = activeLab ? activeLab.teachingList.find(i => i.id === state.editingId) : null;
+            state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
+
             container.innerHTML = `
-                <div class="card">
-                    <label>📚 Teaching Material Item Name:</label>
-                    <input type="text" id="tm-name" value="${item ? item.name : ''}">
-                    <label>🔢 Quantity / Unit:</label>
-                    <input type="text" id="tm-qty" value="${item ? item.qtyUnit : ''}">
-                    <label>📝 Additional Remarks:</label>
-                    <input type="text" id="tm-remarks" value="${item && item.remarks ? item.remarks : ''}">
-                    <button class="btn btn-green" onclick="saveTeaching()">💾 Save Order Item</button>
-                    ${item ? `<button class="btn btn-red" onclick="deleteTeaching('${item.id}')">❌ Delete Item</button>` : ''}
-                </div>
+                ${renderImageEditorHTML()}
+                <label>📚 Teaching Material Item Name:</label>
+                <input type="text" id="tm-name" placeholder="e.g. Marker Pen / Dust Bin" value="${item ? item.name : ''}">
+                
+                <label>🔢 Quantity / Unit:</label>
+                <input type="text" id="tm-qty" placeholder="e.g. 5 boxes / 2 units" value="${item ? item.qtyUnit : ''}">
+
+                <label>📝 Additional Remarks:</label>
+                <textarea id="tm-remarks" placeholder="Enter additional remarks">${item ? (item.remarks || '') : ''}</textarea>
+
+                <button class="btn btn-green" onclick="saveTeaching()">💾 Save Order Item</button>
+                ${item ? `<button class="btn btn-red" onclick="deleteSingleItem('teachingList', '${item.id}')">❌ Delete Item</button>` : ''}
             `;
+            updateImagePreview();
         }
 
         function saveTeaching() {
             let name = document.getElementById('tm-name').value.trim();
-            let qtyUnit = document.getElementById('tm-qty').value.trim();
+            let qty = document.getElementById('tm-qty').value.trim();
             let remarks = document.getElementById('tm-remarks').value.trim();
-            if (!name || !qtyUnit) { alert("Please enter Name and Quantity!"); return; }
+            if (!name || !qty) { alert("Enter Item Name and Quantity!"); return; }
 
-            let list = labProfiles[state.currentLab].teachingList;
+            let activeLab = labProfiles[state.currentLab];
             if (state.editingId) {
-                let item = list.find(i => i.id === state.editingId);
-                if (item) {
-                    item.name = name; item.qtyUnit = qtyUnit; item.remarks = remarks;
-                    logChange(state.currentLab, 'Teaching Materials', 'UPDATED', `Updated teaching item: "${name}" (${qtyUnit})`);
-                }
+                let item = activeLab.teachingList.find(i => i.id === state.editingId);
+                if (item) { item.name = name; item.qtyUnit = qty; item.remarks = remarks; item.imageUri = state.tempImgUri; }
+                addLog(`Updated Teaching Order: ${name} in ${state.currentLab}`);
             } else {
-                list.push({ id: 'TM-' + Date.now(), name, qtyUnit, remarks });
-                logChange(state.currentLab, 'Teaching Materials', 'ADDED', `Added teaching item: "${name}" (${qtyUnit})`);
+                let id = 'TM-' + Date.now();
+                activeLab.teachingList.push({ id, name, qtyUnit: qty, remarks, imageUri: state.tempImgUri });
+                addLog(`Added Teaching Order: ${name} (${qty}) in ${state.currentLab}`);
             }
             saveData();
             goBack();
         }
 
-        function deleteTeaching(id) {
-            let item = labProfiles[state.currentLab].teachingList.find(i => i.id === id);
-            if (confirm(`Are you sure you want to delete teaching item "${item.name}"?`)) {
-                labProfiles[state.currentLab].teachingList = labProfiles[state.currentLab].teachingList.filter(i => i.id !== id);
-                logChange(state.currentLab, 'Teaching Materials', 'DELETED', `Deleted teaching item: "${item.name}"`);
-                saveData();
-                goBack();
-            }
-        }
-
-        /* --- 3. FAULTY / REPAIR SECTION --- */
         function renderFaultyList(container) {
-            if (!state.currentLab || !labProfiles[state.currentLab]) {
-                container.innerHTML = `<div class="card text-center"><p>Please select or create a lab location first.</p></div>`;
-                return;
-            }
-
-            renderSearchBar(container, "Search Faulty Asset Name...", filterFaultyUI);
+            renderSearchBar(container, "Search Faulty Asset Name...");
+            let items = getFilteredCurrentItems();
+            renderSelectionBar(container, items.length);
 
             let listDiv = document.createElement('div');
             listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
-            filterFaultyUI();
+            filterListUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-orange';
             addBtn.innerText = '＋ Add Faulty Report';
-            addBtn.onclick = () => switchScreen('FAULTY_EDIT', null);
+            addBtn.onclick = () => { state.tempImgUri = null; switchScreen('FAULTY_EDIT', null); };
             container.appendChild(addBtn);
         }
 
-        function filterFaultyUI() {
-            let listDiv = document.getElementById('items-list-container');
-            if (!listDiv || !labProfiles[state.currentLab]) return;
-            let q = state.searchQuery.toLowerCase();
-            let items = labProfiles[state.currentLab].faultyList.filter(i => !q || i.name.toLowerCase().includes(q) || (i.stockCode && i.stockCode.toLowerCase().includes(q)));
-
-            listDiv.innerHTML = '';
-            if (items.length === 0) {
-                listDiv.innerHTML = `<div class="card"><p>No faulty reports found in this lab location.</p></div>`;
-            } else {
-                items.forEach(item => {
-                    let card = document.createElement('div');
-                    card.className = 'item-card';
-                    card.innerHTML = `<h2>${item.name}</h2><p>Problem: ${item.problem} | Status: ${item.status || 'Pending Repair'}</p>`;
-                    card.onclick = () => switchScreen('FAULTY_EDIT', item.id);
-                    listDiv.appendChild(card);
-                });
-            }
-        }
-
         function renderFaultyEdit(container) {
-            let item = labProfiles[state.currentLab] ? labProfiles[state.currentLab].faultyList.find(i => i.id === state.editingId) : null;
-            let statuses = ["Pending Repair", "Repaired", "Returned"];
-            let statusOpts = statuses.map(s => `<option value="${s}" ${item && item.status === s ? 'selected' : ''}>${s}</option>`).join('');
+            let activeLab = labProfiles[state.currentLab];
+            let item = activeLab ? activeLab.faultyList.find(i => i.id === state.editingId) : null;
+            state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
 
             container.innerHTML = `
-                <div class="card">
-                    <label>📦 Stock Code / Equipment Code:</label>
-                    <input type="text" id="f-code" value="${item && item.stockCode ? item.stockCode : ''}">
-                    <label>⚙ Equipment Name:</label>
-                    <input type="text" id="f-name" value="${item ? item.name : ''}">
-                    <label>🔧 Problem Description:</label>
-                    <input type="text" id="f-problem" value="${item ? item.problem : ''}">
-                    <label>📅 Reported Date:</label>
-                    <input type="date" id="f-date" value="${item && item.date ? item.date : new Date().toISOString().split('T')[0]}">
-                    <label>📌 Repair Status:</label>
-                    <select id="f-status">${statusOpts}</select>
-                    <label>📝 Repair Notes / Remarks:</label>
-                    <input type="text" id="f-remarks" value="${item && item.remarks ? item.remarks : ''}">
-                    <button class="btn btn-green" onclick="saveFaulty()">💾 Save Faulty Report</button>
-                    ${item ? `<button class="btn btn-red" onclick="deleteFaulty('${item.id}')">❌ Delete Report</button>` : ''}
-                </div>
+                ${renderImageEditorHTML()}
+                <label>📦 Stock List Number / Equipment Code:</label>
+                <input type="text" id="f-stock" placeholder="e.g. ST/P103/2015/E001" value="${item ? (item.stockCode || '') : ''}">
+
+                <label>⚙ Equipment Name:</label>
+                <input type="text" id="f-name" placeholder="e.g. Lathe Machine" value="${item ? item.name : ''}">
+
+                <label>🔧 Problem Description:</label>
+                <input type="text" id="f-problem" placeholder="e.g. Abnormal motor noise" value="${item ? item.problem : ''}">
+
+                <label>📅 Reported Date:</label>
+                <input type="date" id="f-date" value="${item ? item.date : new Date().toISOString().substring(0,10)}">
+
+                <label>📌 Repair Status:</label>
+                <select id="f-status">
+                    <option value="Pending Repair" ${item && item.status === 'Pending Repair' ? 'selected' : ''}>Pending Repair</option>
+                    <option value="Repaired" ${item && item.status === 'Repaired' ? 'selected' : ''}>Repaired</option>
+                    <option value="Returned" ${item && item.status === 'Returned' ? 'selected' : ''}>Returned</option>
+                </select>
+
+                <label>📝 Additional Remarks:</label>
+                <textarea id="f-remarks" placeholder="Enter repair action details">${item ? (item.remarks || '') : ''}</textarea>
+
+                <button class="btn btn-green" onclick="saveFaulty()">💾 Save Faulty Report</button>
+                ${item ? `<button class="btn btn-red" onclick="deleteSingleItem('faultyList', '${item.id}')">❌ Delete Report</button>` : ''}
             `;
+            updateImagePreview();
         }
 
         function saveFaulty() {
-            let stockCode = document.getElementById('f-code').value.trim();
             let name = document.getElementById('f-name').value.trim();
+            let stockCode = document.getElementById('f-stock').value.trim();
             let problem = document.getElementById('f-problem').value.trim();
             let date = document.getElementById('f-date').value;
             let status = document.getElementById('f-status').value;
             let remarks = document.getElementById('f-remarks').value.trim();
+            if (!name) { alert("Enter Equipment Name!"); return; }
 
-            if (!name) { alert("Please enter Equipment Name!"); return; }
-
-            let list = labProfiles[state.currentLab].faultyList;
+            let activeLab = labProfiles[state.currentLab];
             if (state.editingId) {
-                let item = list.find(i => i.id === state.editingId);
-                if (item) {
-                    Object.assign(item, { stockCode, name, problem, date, status, remarks });
-                    logChange(state.currentLab, 'Faulty Report', 'UPDATED', `Updated faulty report for "${name}" (${status})`);
-                }
+                let item = activeLab.faultyList.find(i => i.id === state.editingId);
+                if (item) { Object.assign(item, { stockCode, name, problem, date, status, remarks, imageUri: state.tempImgUri }); }
+                addLog(`Updated Faulty Report for: ${name} in ${state.currentLab}`);
             } else {
-                list.push({ id: 'F-' + (list.length + 1), stockCode, name, problem, date, status, remarks });
-                logChange(state.currentLab, 'Faulty Report', 'ADDED', `Created faulty report for "${name}" (${problem})`);
+                let id = 'F-' + (activeLab.faultyList.length + 1);
+                activeLab.faultyList.push({ id, stockCode, name, problem, date, status, remarks, imageUri: state.tempImgUri });
+                addLog(`Created Faulty Report: ${name} in ${state.currentLab}`);
             }
             saveData();
             goBack();
         }
 
-        function deleteFaulty(id) {
-            let item = labProfiles[state.currentLab].faultyList.find(i => i.id === id);
-            if (confirm(`Are you sure you want to delete faulty report for "${item.name}"?`)) {
-                labProfiles[state.currentLab].faultyList = labProfiles[state.currentLab].faultyList.filter(i => i.id !== id);
-                logChange(state.currentLab, 'Faulty Report', 'DELETED', `Deleted faulty report for "${item.name}"`);
-                saveData();
-                goBack();
-            }
-        }
-
-        /* --- 4. ASSET WRITE OFF SECTION --- */
         function renderWriteOffList(container) {
-            if (!state.currentLab || !labProfiles[state.currentLab]) {
-                container.innerHTML = `<div class="card text-center"><p>Please select or create a lab location first.</p></div>`;
-                return;
-            }
-
-            renderSearchBar(container, "Search Write Off Asset Name...", filterWriteOffUI);
+            renderSearchBar(container, "Search Write Off Asset Name...");
+            let items = getFilteredCurrentItems();
+            renderSelectionBar(container, items.length);
 
             let listDiv = document.createElement('div');
             listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
-            filterWriteOffUI();
+            filterListUI();
 
             let addBtn = document.createElement('button');
             addBtn.className = 'btn btn-red';
             addBtn.innerText = '＋ Add Write Off Proposal';
-            addBtn.onclick = () => switchScreen('WRITEOFF_EDIT', null);
+            addBtn.onclick = () => { state.tempImgUri = null; switchScreen('WRITEOFF_EDIT', null); };
             container.appendChild(addBtn);
         }
 
-        function filterWriteOffUI() {
-            let listDiv = document.getElementById('items-list-container');
-            if (!listDiv || !labProfiles[state.currentLab]) return;
-            let q = state.searchQuery.toLowerCase();
-            let items = labProfiles[state.currentLab].writeOffList.filter(i => !q || i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
-
-            listDiv.innerHTML = '';
-            if (items.length === 0) {
-                listDiv.innerHTML = `<div class="card"><p>No write-off proposals found in this lab location.</p></div>`;
-            } else {
-                items.forEach(item => {
-                    let card = document.createElement('div');
-                    card.className = 'item-card';
-                    card.innerHTML = `<h2>${item.name}</h2><p>Reason: ${item.reason} | Status: ${item.status || 'Pending'}</p>`;
-                    card.onclick = () => switchScreen('WRITEOFF_EDIT', item.code);
-                    listDiv.appendChild(card);
-                });
-            }
-        }
-
         function renderWriteOffEdit(container) {
-            let item = labProfiles[state.currentLab] ? labProfiles[state.currentLab].writeOffList.find(i => i.code === state.editingId) : null;
-            let statuses = ["Pending", "Approved", "Not Approved"];
-            let statusOpts = statuses.map(s => `<option value="${s}" ${item && item.status === s ? 'selected' : ''}>${s}</option>`).join('');
+            let activeLab = labProfiles[state.currentLab];
+            let item = activeLab ? activeLab.writeOffList.find(i => i.code === state.editingId) : null;
+            state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
 
             container.innerHTML = `
-                <div class="card">
-                    <label>📦 Stock Code / Asset Code:</label>
-                    <input type="text" id="w-code" value="${item ? item.code : ''}">
-                    <label>⚙ Equipment / Asset Name:</label>
-                    <input type="text" id="w-name" value="${item ? item.name : ''}">
-                    <label>🗑 Reason for Write Off:</label>
-                    <input type="text" id="w-reason" value="${item ? item.reason : ''}">
-                    <label>📌 Status:</label>
-                    <select id="w-status">${statusOpts}</select>
-                    <label>📝 Additional Remarks / Notes:</label>
-                    <input type="text" id="w-remarks" value="${item && item.remarks ? item.remarks : ''}">
-                    <button class="btn btn-green" onclick="saveWriteOff()">💾 Save Write Off Proposal</button>
-                    ${item ? `<button class="btn btn-red" onclick="deleteWriteOff('${item.code}')">❌ Delete Proposal</button>` : ''}
-                </div>
+                ${renderImageEditorHTML()}
+                <label>📦 Stock List Number / Asset Code:</label>
+                <input type="text" id="w-code" placeholder="e.g. AST-001" value="${item ? item.code : ''}">
+
+                <label>⚙ Equipment / Asset Name:</label>
+                <input type="text" id="w-name" placeholder="e.g. Hydraulic Pump" value="${item ? item.name : ''}">
+
+                <label>🗑 Reason for Write Off:</label>
+                <input type="text" id="w-reason" placeholder="e.g. Beyond economic repair" value="${item ? item.reason : ''}">
+
+                <label>📌 Write Off Status:</label>
+                <select id="w-status">
+                    <option value="Pending" ${item && item.status === 'Pending' ? 'selected' : ''}>Pending</option>
+                    <option value="Approved" ${item && item.status === 'Approved' ? 'selected' : ''}>Approved</option>
+                    <option value="Not Approved" ${item && item.status === 'Not Approved' ? 'selected' : ''}>Not Approved</option>
+                </select>
+
+                <label>📝 Additional Remarks:</label>
+                <textarea id="w-remarks" placeholder="Enter disposal approval notes">${item ? (item.remarks || '') : ''}</textarea>
+
+                <button class="btn btn-green" onclick="saveWriteOff()">💾 Save Write Off Proposal</button>
+                ${item ? `<button class="btn btn-red" onclick="deleteSingleItem('writeOffList', '${item.code}')">❌ Delete Proposal</button>` : ''}
             `;
+            updateImagePreview();
         }
 
         function saveWriteOff() {
@@ -603,224 +693,178 @@
             let reason = document.getElementById('w-reason').value.trim();
             let status = document.getElementById('w-status').value;
             let remarks = document.getElementById('w-remarks').value.trim();
+            if (!code || !name) { alert("Enter Asset Code & Name!"); return; }
 
-            if (!code || !name) { alert("Please enter Asset Code and Name!"); return; }
-
-            let list = labProfiles[state.currentLab].writeOffList;
+            let activeLab = labProfiles[state.currentLab];
             if (state.editingId) {
-                let item = list.find(i => i.code === state.editingId);
-                if (item) {
-                    Object.assign(item, { code, name, reason, status, remarks });
-                    logChange(state.currentLab, 'Asset Write Off', 'UPDATED', `Updated write off proposal for "${name}" (${status})`);
-                }
+                let item = activeLab.writeOffList.find(i => i.code === state.editingId);
+                if (item) { Object.assign(item, { code, name, reason, status, remarks, imageUri: state.tempImgUri }); }
+                addLog(`Updated Write Off Proposal: ${code} in ${state.currentLab}`);
             } else {
-                list.push({ code, name, reason, status, remarks });
-                logChange(state.currentLab, 'Asset Write Off', 'ADDED', `Created write off proposal for "${name}" (${reason})`);
+                activeLab.writeOffList.push({ code, name, reason, status, remarks, imageUri: state.tempImgUri });
+                addLog(`Created Write Off Proposal: ${code} (${name}) in ${state.currentLab}`);
             }
             saveData();
             goBack();
         }
 
-        function deleteWriteOff(code) {
-            let item = labProfiles[state.currentLab].writeOffList.find(i => i.code === code);
-            if (confirm(`Are you sure you want to delete write off proposal for "${item.name}"?`)) {
-                labProfiles[state.currentLab].writeOffList = labProfiles[state.currentLab].writeOffList.filter(i => i.code !== code);
-                logChange(state.currentLab, 'Asset Write Off', 'DELETED', `Deleted write off proposal for "${item.name}"`);
+        function renderImageEditorHTML() {
+            return `
+                <div class="card text-center">
+                    <img id="img-preview" class="img-preview">
+                    <div class="row" style="margin-top:8px;">
+                        <button class="btn btn-blue btn-inline col" onclick="triggerCamera()">📸 Camera</button>
+                        <button class="btn btn-purple btn-inline col" onclick="triggerImageFile()">📁 Gallery</button>
+                        <button class="btn btn-red btn-inline col" onclick="removeImage()">🗑 Remove</button>
+                    </div>
+                </div>
+            `;
+        }
+
+        function updateImagePreview() {
+            let img = document.getElementById('img-preview');
+            if (img) {
+                if (state.tempImgUri && state.tempImgUri !== 'REMOVED') {
+                    img.src = state.tempImgUri;
+                    img.style.display = 'block';
+                } else {
+                    img.style.display = 'none';
+                }
+            }
+        }
+
+        function triggerCamera() { document.getElementById('camera-input-img').click(); }
+        function triggerImageFile() { document.getElementById('file-input-img').click(); }
+
+        function handleImageFileSelected(e) {
+            let file = e.target.files[0];
+            if (file) {
+                let reader = new FileReader();
+                reader.onload = (event) => {
+                    state.tempImgUri = event.target.result;
+                    updateImagePreview();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        function removeImage() {
+            state.tempImgUri = 'REMOVED';
+            updateImagePreview();
+        }
+
+        function toggleItemSelection(id) {
+            if (state.selectedIds.has(id)) state.selectedIds.delete(id);
+            else state.selectedIds.add(id);
+            render();
+        }
+
+        function deleteSingleItem(listKey, id) {
+            if (confirm("Are you sure you want to delete this item?")) {
+                let activeLab = labProfiles[state.currentLab];
+                activeLab[listKey] = activeLab[listKey].filter(i => (i.id || i.code) !== id);
                 saveData();
                 goBack();
             }
         }
 
-        /* --- AUDIT LOG DISPLAY & CSV EXPORT --- */
-        function renderLogs(container) {
+        function renderMore(container) {
             container.innerHTML = `
                 <div class="card">
-                    <h2>Export CSV Change Log</h2>
-                    <p style="margin-bottom:10px;">Download complete history of all changes across all lab locations in CSV format.</p>
-                    <button class="btn btn-green" onclick="exportLogsCSV()">📊 Download CSV Audit Log</button>
+                    <h2>App Information</h2>
+                    <p>Version: v6.0.0 (Native Layout & Live Alignment)</p>
+                    <button class="btn btn-purple" onclick="switchScreen('LOGS')">📜 View Activity Logs</button>
+                </div>
+
+                <div class="card">
+                    <h2>Excel File Actions</h2>
+                    <button class="btn btn-green" onclick="triggerExcelImport()">📂 Import Original Excel File (.xlsx)</button>
+                    <button class="btn btn-purple" onclick="exportFormattedExcel()">💾 Save & Export Exact Excel (.xlsx)</button>
                 </div>
             `;
+        }
 
-            let logsCard = document.createElement('div');
-            logsCard.className = 'card';
-            logsCard.innerHTML = `<h2>Recent Activity History</h2>`;
-
-            if (changeLogs.length === 0) {
-                logsCard.innerHTML += `<p>No activity logs recorded yet.</p>`;
+        function renderLogs(container) {
+            let html = `<h2>📋 Historical Change History</h2>`;
+            if (activityLogs.length === 0) {
+                html += `<p>No activity logs recorded yet.</p>`;
             } else {
-                changeLogs.forEach(log => {
-                    let tagClass = 'tag-update';
-                    if (log.actionType === 'ADDED') tagClass = 'tag-add';
-                    if (log.actionType === 'MOVED') tagClass = 'tag-transfer';
-                    if (log.actionType === 'DELETED') tagClass = 'tag-delete';
-
-                    let item = document.createElement('div');
-                    item.style.borderBottom = "1px solid #ccc";
-                    item.style.padding = "8px 0";
-                    item.innerHTML = `
-                        <div style="display:flex; justify-content:space-between; margin-bottom:4px;">
-                            <span class="log-tag ${tagClass}">${log.actionType}</span>
-                            <span style="font-size:11px; color:#666;">${log.timestamp}</span>
-                        </div>
-                        <p><strong>Location:</strong> ${log.location} | <strong>Category:</strong> ${log.category}</p>
-                        <p style="color:#222; margin-top:2px;">${log.remarks}</p>
-                    `;
-                    logsCard.appendChild(item);
+                activityLogs.forEach(log => {
+                    html += `<div class="card" style="padding:8px;"><p style="font-size:11px;">${log}</p></div>`;
                 });
             }
-            container.appendChild(logsCard);
+            container.innerHTML = html;
         }
 
-        function exportLogsCSV() {
-            if (changeLogs.length === 0) {
-                alert("No activity logs available to export!");
-                return;
-            }
-
-            let csvRows = [];
-            csvRows.push(["No.", "Timestamp", "Lab Location", "Category", "Action Type", "Details / Remarks"]);
-
-            changeLogs.forEach((log, index) => {
-                csvRows.push([
-                    index + 1,
-                    `"${log.timestamp}"`,
-                    `"${log.location}"`,
-                    `"${log.category}"`,
-                    `"${log.actionType}"`,
-                    `"${log.remarks.replace(/"/g, '""')}"`
-                ]);
-            });
-
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csvRows.map(e => e.join(",")).join("\n");
-            let encodedUri = encodeURI(csvContent);
-            let link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Lab_Inventory_Audit_Log_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function triggerImport() {
+        function triggerExcelImport() {
             document.getElementById('file-input-excel').click();
         }
 
-        /* --- SMART EXCEL / CSV PARSING FUNCTION --- */
-        function handleExcelImport(e) {
+        function handleExcelFileSelected(e) {
             let file = e.target.files[0];
             if (!file) return;
+
+            originalFileName = file.name;
 
             let reader = new FileReader();
             reader.onload = function(evt) {
                 try {
-                    let data = new Uint8Array(evt.target.result);
-                    let workbook = XLSX.read(data, { type: 'array' });
+                    let arrayBuffer = evt.target.result;
+                    let binary = "";
+                    let bytes = new Uint8Array(arrayBuffer);
+                    for (let i = 0; i < bytes.byteLength; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    originalWorkbookBinary = btoa(binary);
 
-                    let itemsImported = 0;
-                    let currentSection = "EQUIPMENT";
+                    let workbook = XLSX.read(arrayBuffer, { type: 'array', cellStyles: true, cellFormulas: true, cellDates: true, cellNF: true });
+                    
+                    let totalImported = 0;
+                    let sheetsParsed = 0;
 
                     workbook.SheetNames.forEach(sheetName => {
+                        let trimmedName = sheetName.trim();
                         let worksheet = workbook.Sheets[sheetName];
-                        let defaultSheetLab = sheetName.trim();
-                        let isGenericSheet = /^sheet\s*\d+$/i.test(defaultSheetLab) \vert{}\vert{} /^table\s*\d+$/i.test(defaultSheetLab);
 
-                        let jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
-                        
-                        let detectedLabMeta = "";
-                        jsonRows.forEach(row => {
-                            if (row && row.length > 0) {
-                                let str = row.join(" ");
-                                let match = str.match(/Lab\s*Location\s*[:\t,]\s*["']?([^"',\n\r]+)["']?/i);
-                                if (match && match[1]) detectedLabMeta = match[1].trim();
-                            }
-                        });
+                        if (!labProfiles[trimmedName]) {
+                            labProfiles[trimmedName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
+                        }
+                        let profile = labProfiles[trimmedName];
+                        profile.equipmentList = [];
 
-                        jsonRows.forEach((row, index) => {
-                            if (!row || row.length === 0) return;
+                        let startRow = 11; // Baris 12 (R=11)
 
-                            let lineStr = row.join(" ").trim();
-                            if (!lineStr) return;
+                        for (let R = startRow; R < 200; ++R) {
+                            let descRef = XLSX.utils.encode_cell({c: 3, r: R});
+                            let codeRef = XLSX.utils.encode_cell({c: 19, r: R});
 
-                            if (lineStr.includes("SECTION 1: EQUIPMENT LIST") || lineStr.includes("EQUIPMENT LIST")) { currentSection = "EQUIPMENT"; return; }
-                            if (lineStr.includes("SECTION 2: TEACHING MATERIALS ORDER") || lineStr.includes("TEACHING MATERIALS")) { currentSection = "TEACHING"; return; }
-                            if (lineStr.includes("SECTION 3: FAULTY / REPAIR REPORTS") || lineStr.includes("FAULTY / REPAIR") || lineStr.includes("FAULTY REPORTS")) { currentSection = "FAULTY"; return; }
-                            if (lineStr.includes("SECTION 4: ASSET WRITE OFF PROPOSALS") || lineStr.includes("WRITE OFF")) { currentSection = "WRITEOFF"; return; }
+                            let descCell = worksheet[descRef];
+                            let codeCell = worksheet[codeRef];
 
-                            if (lineStr.startsWith("No.,") || lineStr.startsWith("No ") || lineStr.startsWith("Lab Location") || lineStr.startsWith("Generated Date") || lineStr.startsWith("----")) return;
+                            let rawName = descCell ? String(descCell.v || '').trim().replace(/\r?\n|\r/g, " ") : '';
+                            let rawCode = codeCell ? String(codeCell.v || '').trim() : '';
 
-                            let col0 = String(row[0] || "").trim();
-                            let col1 = String(row[1] || "").trim();
-                            let col2 = String(row[2] || "").trim();
+                            if (rawName && rawName.includes("Prepared by:")) break;
 
-                            // Determine actual Lab Name (never use row numbers 1, 2, 3...)
-                            let rowLabName = "";
-                            if (col0 && !/^\d+$/.test(col0) && col0.toLowerCase() !== 'no' && col0.toLowerCase() !== 'no.' && col0.toLowerCase() !== 'equipment code') {
-                                rowLabName = col0;
-                            } else if (detectedLabMeta) {
-                                rowLabName = detectedLabMeta;
-                            } else if (!isGenericSheet) {
-                                rowLabName = defaultSheetLab;
-                            } else {
-                                rowLabName = state.currentLab || "Main Lab";
-                            }
-
-                            rowLabName = rowLabName.replace(/^"|"$/g, '').trim();
-
-                            if (!labProfiles[rowLabName]) {
-                                labProfiles[rowLabName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-                            }
-
-                            let profile = labProfiles[rowLabName];
-
-                            if (col0.includes("No Equipment") || col1.includes("No Equipment") || col0.includes("No Teaching") || col0.includes("No Faulty") || col0.includes("No Asset Write Off")) return;
-
-                            if (currentSection === "EQUIPMENT") {
-                                let code = /^\d+$/.test(col0) ? col1 : col0;
-                                let name = /^\d+$/.test(col0) ? col2 : col1;
-
-                                if (code && name && code.toLowerCase() !== 'equipment code' && code.toLowerCase() !== 'code') {
-                                    if (!profile.equipmentList.some(i => i.code.toLowerCase() === code.toLowerCase())) {
-                                        profile.equipmentList.push({ code, name });
-                                        itemsImported++;
+                            if (rawName && rawCode && !rawCode.startsWith("(")) {
+                                let extra = {};
+                                for (let C = 0; C < 24; ++C) {
+                                    let cRef = XLSX.utils.encode_cell({c: C, r: R});
+                                    if (worksheet[cRef]) {
+                                        extra[C] = Object.assign({}, worksheet[cRef]);
                                     }
                                 }
-                            } else if (currentSection === "TEACHING") {
-                                let name = /^\d+$/.test(col0) ? col1 : col0;
-                                let qtyUnit = /^\d+$/.test(col0) ? col2 : col1;
-                                let remarks = /^\d+$/.test(col0) ? String(row[3]||'').trim() : col2;
 
-                                if (name && name.toLowerCase() !== 'item name') {
-                                    profile.teachingList.push({ id: 'TM-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4), name, qtyUnit, remarks });
-                                    itemsImported++;
-                                }
-                            } else if (currentSection === "FAULTY") {
-                                let id = /^\d+$/.test(col0) ? col1 : col0;
-                                let stockCode = String(row[1]||'').trim();
-                                let name = String(row[2]||'').trim();
-                                let problem = String(row[3]||'').trim();
-                                let date = String(row[4]||'').trim();
-                                let status = String(row[5]||'Pending Repair').trim();
-                                let remarks = String(row[6]||'').trim();
-
-                                if (name && name.toLowerCase() !== 'asset name') {
-                                    profile.faultyList.push({ id: id || ('F-' + Date.now()), stockCode, name, problem, date, status, remarks });
-                                    itemsImported++;
-                                }
-                            } else if (currentSection === "WRITEOFF") {
-                                let code = col0;
-                                let name = col1;
-                                let reason = col2;
-                                let status = String(row[3]||'Pending').trim();
-                                let remarks = String(row[4]||'').trim();
-
-                                if (code && name && code.toLowerCase() !== 'asset code') {
-                                    if (!profile.writeOffList.some(i => i.code.toLowerCase() === code.toLowerCase())) {
-                                        profile.writeOffList.push({ code, name, reason, status, remarks });
-                                        itemsImported++;
-                                    }
-                                }
+                                profile.equipmentList.push({ 
+                                    code: rawCode, 
+                                    name: rawName, 
+                                    imageUri: null,
+                                    extraCells: extra
+                                });
+                                totalImported++;
                             }
-                        });
+                        }
+                        sheetsParsed++;
                     });
 
                     let keys = Object.keys(labProfiles);
@@ -828,31 +872,138 @@
                         state.currentLab = keys[0];
                     }
 
-                    logChange('MULTI-LOCATION', 'Import File', 'ADDED', `Imported ${itemsImported} record(s) from "${file.name}".`);
                     saveData();
-                    alert(`Success! Imported ${itemsImported} record(s) across ${keys.length} lab location(s).`);
-                    render();
+                    addLog(`Imported ${totalImported} items from original Excel file`);
+                    alert(`Berjaya membaca ${totalImported} peralatan daripada fail Excel asal!`);
+                    switchScreen('HOME');
 
                 } catch (err) {
-                    alert("Error reading file! Please ensure it is a valid Excel (.xls, .xlsx) or CSV file.");
                     console.error(err);
+                    alert("Gagal membaca fail Excel: " + err.message);
                 }
             };
             reader.readAsArrayBuffer(file);
-            e.target.value = '';
         }
 
-        function renderMore(container) {
-            container.innerHTML = `
-                <div class="card">
-                    <h2>System Management Options</h2>
-                    <button class="btn btn-purple" onclick="triggerImport()">📂 Upload Excel / CSV File (Auto-Detect Lab)</button>
-                    <button class="btn btn-green" onclick="exportLogsCSV()">📊 Download CSV Audit Log</button>
-                </div>
-            `;
+        /* --- EXPORT: BERSINKRONISASI LENGKAP TANPA BARIS KOSONG & KEKALKAN BORDER/GAYA --- */
+        function exportFormattedExcel() {
+            try {
+                if (!originalWorkbookBinary) {
+                    alert("Sila muat naik fail Excel asal (.xlsx) terlebih dahulu!");
+                    return;
+                }
+
+                let binaryStr = atob(originalWorkbookBinary);
+                let bytes = new Uint8Array(binaryStr.length);
+                for (let i = 0; i < binaryStr.length; i++) {
+                    bytes[i] = binaryStr.charCodeAt(i);
+                }
+
+                let workbook = XLSX.read(bytes.buffer, { type: 'array', cellStyles: true, cellFormulas: true, cellDates: true, cellNF: true });
+
+                Object.keys(labProfiles).forEach(labName => {
+                    let profile = labProfiles[labName];
+                    let worksheet = workbook.Sheets[labName];
+
+                    if (!worksheet) return;
+
+                    let startRow = 11; // Baris 12 (0-indexed R=11)
+                    let footerStartR = -1;
+
+                    // Cari julat footer pengesahan
+                    for (let R = startRow; R < 200; ++R) {
+                        let descRef = XLSX.utils.encode_cell({c: 3, r: R});
+                        if (worksheet[descRef] && String(worksheet[descRef].v).includes("Prepared by:")) {
+                            footerStartR = R;
+                            break;
+                        }
+                    }
+
+                    let clearEndR = footerStartR !== -1 ? footerStartR : 150;
+
+                    // 1. Kosongkan julat lama untuk menghapuskan gapping/sel kosong
+                    for (let R = startRow; R < clearEndR; ++R) {
+                        for (let C = 0; C < 24; ++C) {
+                            let cellRef = XLSX.utils.encode_cell({c: C, r: R});
+                            delete worksheet[cellRef];
+                        }
+                    }
+
+                    // 2. Tulis semula senarai item yang dikemas kini (Shift Up automatik)
+                    profile.equipmentList.forEach((item, index) => {
+                        let targetRow = startRow + index;
+
+                        if (item.extraCells) {
+                            Object.keys(item.extraCells).forEach(cIdx => {
+                                let cRef = XLSX.utils.encode_cell({c: parseInt(cIdx), r: targetRow});
+                                worksheet[cRef] = Object.assign({}, item.extraCells[cIdx]);
+                            });
+                        }
+
+                        let noRef = XLSX.utils.encode_cell({c: 2, r: targetRow});
+                        let descRef = XLSX.utils.encode_cell({c: 3, r: targetRow});
+                        let codeRef = XLSX.utils.encode_cell({c: 19, r: targetRow});
+                        let locRef = XLSX.utils.encode_cell({c: 20, r: targetRow});
+
+                        worksheet[noRef] = worksheet[noRef] || {};
+                        worksheet[noRef].v = index + 1;
+                        worksheet[noRef].t = 'n';
+
+                        worksheet[descRef] = worksheet[descRef] || {};
+                        worksheet[descRef].v = item.name;
+                        worksheet[descRef].t = 's';
+
+                        worksheet[codeRef] = worksheet[codeRef] || {};
+                        worksheet[codeRef].v = item.code;
+                        worksheet[codeRef].t = 's';
+
+                        worksheet[locRef] = worksheet[locRef] || {};
+                        worksheet[locRef].v = labName;
+                        worksheet[locRef].t = 's';
+                    });
+                });
+
+                XLSX.writeFile(workbook, originalFileName);
+                addLog("Saved inventory directly into original binary Excel template");
+                alert("Fail Excel berjaya disimpan! Baris kosong dibuang, format dan garisan border kekal 100%.");
+
+            } catch (err) {
+                console.error(err);
+                alert("Gagal menyimpan fail Excel: " + err.message);
+            }
         }
 
         render();
+
+        let deferredPrompt;
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();
+            deferredPrompt = e;
+            let banner = document.getElementById('pwa-install-banner');
+            if (banner) banner.classList.remove('hidden');
+        });
+
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted PWA install');
+                    }
+                    deferredPrompt = null;
+                    hideInstallBanner();
+                });
+            }
+        }
+
+        function hideInstallBanner() {
+            let banner = document.getElementById('pwa-install-banner');
+            if (banner) banner.classList.add('hidden');
+        }
+
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('sw.js').catch(err => console.log('SW registration failed:', err));
+        }
     </script>
 </body>
 </html>
