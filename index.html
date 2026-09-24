@@ -155,31 +155,24 @@
         let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
         let csvAuditLogs = JSON.parse(localStorage.getItem('csvAuditLogs')) || [];
 
-        // STRICT INVALID LOCATION FILTER
-        const invalidLocationWords = [
-            "system",
-            "se009_default",
-            "equipment list", 
-            "teaching materials", 
-            "faulty report", 
-            "faulty / repair", 
-            "asset write off", 
-            "general & import", 
-            "general", 
-            "location", 
-            "category",
-            "action type",
-            "timestamp",
-            "no",
-            "no."
-        ];
-
+        // STRICT INVALID LOCATION FILTER (Discards Roman numerals, section numbers like 17 (iii), 6 (i), headers)
         function isValidLocationName(name) {
             if (!name) return false;
-            let trimmed = String(name).trim().toLowerCase();
+            let trimmed = String(name).trim();
             if (!trimmed) return false;
-            if (/^\d+$/.test(trimmed)) return false; 
-            if (invalidLocationWords.includes(trimmed)) return false; 
+
+            // Reject pure numbers or section numbers like "17 (iii)", "6 (iv)", "26 (ii)"
+            if (/^\d+(\s*\([ivx\d]+\))?$/i.test(trimmed)) return false;
+            if (/^[ivx]+\s*\([ivx\d]+\)$/i.test(trimmed)) return false;
+
+            let lower = trimmed.toLowerCase();
+            const invalidKeywords = [
+                "system", "se009_default", "equipment list", "teaching materials", 
+                "faulty report", "faulty / repair", "asset write off", "general & import", 
+                "general", "location", "category", "action type", "timestamp", "no", "no."
+            ];
+
+            if (invalidKeywords.includes(lower)) return false; 
             return true;
         }
 
@@ -890,7 +883,7 @@
             container.innerHTML = html;
         }
 
-        /* --- EXPORT MASTER INVENTORY DATA (.XLSX) --- */
+        /* --- EXPORT MASTER INVENTORY DATA INTO MULTI-TAB CATEGORIZED EXCEL (.XLSX) --- */
         function exportMasterInventoryData() {
             let keys = Object.keys(labProfiles).filter(isValidLocationName);
             if (keys.length === 0) {
@@ -900,22 +893,39 @@
 
             let workbook = XLSX.utils.book_new();
 
+            let categoriesData = {
+                "Equipment List": [["Location", "Item Code / Stock No.", "Equipment Name", "Status"]],
+                "Teaching Materials": [["Location", "Order ID", "Item Name", "Quantity / Unit", "Remarks"]],
+                "Faulty Report": [["Location", "Stock Code", "Equipment Name", "Problem Description", "Reported Date", "Repair Status", "Remarks"]],
+                "Asset Write Off": [["Location", "Asset Code", "Equipment / Asset Name", "Reason for Write Off", "Status", "Remarks"]]
+            };
+
             keys.forEach(loc => {
                 let profile = labProfiles[loc];
-                let rows = [
-                    ["Location", "Category", "Item Code / ID", "Item Name", "Qty/Status/Reason", "Remarks"]
-                ];
 
-                profile.equipmentList.forEach(i => rows.push([loc, "Equipment List", i.code, i.name, "Active", ""]));
-                profile.teachingList.forEach(i => rows.push([loc, "Teaching Materials", i.id, i.name, i.qtyUnit, i.remarks || ""]));
-                profile.faultyList.forEach(i => rows.push([loc, "Faulty Report", i.stockCode || i.id, i.name, i.status, i.problem || ""]));
-                profile.writeOffList.forEach(i => rows.push([loc, "Asset Write Off", i.code, i.name, i.status, i.reason || ""]));
+                profile.equipmentList.forEach(i => {
+                    categoriesData["Equipment List"].push([loc, i.code || '', i.name || '', 'Active']);
+                });
 
+                profile.teachingList.forEach(i => {
+                    categoriesData["Teaching Materials"].push([loc, i.id || '', i.name || '', i.qtyUnit || '', i.remarks || '']);
+                });
+
+                profile.faultyList.forEach(i => {
+                    categoriesData["Faulty Report"].push([loc, i.stockCode || '', i.name || '', i.problem || '', i.date || '', i.status || '', i.remarks || '']);
+                });
+
+                profile.writeOffList.forEach(i => {
+                    categoriesData["Asset Write Off"].push([loc, i.code || '', i.name || '', i.reason || '', i.status || '', i.remarks || '']);
+                });
+            });
+
+            // Append each Category Sheet into Workbook
+            Object.keys(categoriesData).forEach(catName => {
+                let rows = categoriesData[catName];
                 let worksheet = XLSX.utils.aoa_to_sheet(rows);
-                worksheet['!cols'] = [{ wch: 15 }, { wch: 20 }, { wch: 25 }, { wch: 35 }, { wch: 20 }, { wch: 30 }];
-                
-                let safeSheetName = loc.substring(0, 31);
-                XLSX.utils.book_append_sheet(workbook, worksheet, safeSheetName);
+                worksheet['!cols'] = [{ wch: 15 }, { wch: 22 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 30 }];
+                XLSX.utils.book_append_sheet(workbook, worksheet, catName);
             });
 
             XLSX.writeFile(workbook, `MechLab_Inventory_Records_${new Date().toISOString().slice(0,10)}.xlsx`);
@@ -969,7 +979,7 @@
                                 let name = cols[3] || cols[2];
                                 let extraVal = cols[4] || "";
 
-                                let loc = isValidLocationName(locCandidate) ? locCandidate : (isValidLocationName(filenameLoc) ? filenameLoc : "SE009");
+                                let loc = isValidLocationName(locCandidate) ? locCandidate : (isValidLocationName(filenameLoc) ? filenameLoc : "N101A");
                                 if (!labProfiles[loc]) {
                                     labProfiles[loc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                                 }
@@ -999,41 +1009,50 @@
                         let workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
                         workbook.SheetNames.forEach(sheetName => {
-                            let sheetLocName = sheetName.trim();
+                            let sheetCatName = sheetName.trim();
                             let worksheet = workbook.Sheets[sheetName];
                             let jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
                             jsonRows.forEach((row, rIdx) => {
-                                if (!row || row.length < 3) return;
+                                if (!row || row.length < 2) return;
                                 let rowStr = row.join(" ").toLowerCase();
-                                if (rIdx === 0 || rowStr.includes("location") || rowStr.includes("timestamp")) return;
+                                if (rIdx === 0 || rowStr.includes("location") || rowStr.includes("timestamp") || rowStr.includes("stock code")) return;
 
-                                let locVal = row[0] ? String(row[0]).trim() : sheetLocName;
-                                let catVal = row[1] ? String(row[1]).trim().toLowerCase() : '';
-                                let codeVal = row[2] ? String(row[2]).trim() : '';
-                                let nameVal = row[3] ? String(row[3]).trim() : '';
-                                let statusVal = row[4] ? String(row[4]).trim() : '';
-                                let remarkVal = row[5] ? String(row[5]).trim() : '';
+                                let locVal = row[0] ? String(row[0]).trim() : '';
+                                let codeVal = row[1] ? String(row[1]).trim() : '';
+                                let nameVal = row[2] ? String(row[2]).trim() : '';
+                                let extraVal1 = row[3] ? String(row[3]).trim() : '';
+                                let extraVal2 = row[4] ? String(row[4]).trim() : '';
 
-                                let targetLoc = isValidLocationName(locVal) ? locVal : (isValidLocationName(sheetLocName) ? sheetLocName : (isValidLocationName(filenameLoc) ? filenameLoc : "SE009"));
+                                let targetLoc = isValidLocationName(locVal) ? locVal : (isValidLocationName(filenameLoc) ? filenameLoc : "N101A");
 
                                 if (!labProfiles[targetLoc]) {
                                     labProfiles[targetLoc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                                 }
                                 let profile = labProfiles[targetLoc];
+                                let catLower = sheetCatName.toLowerCase();
 
-                                if (catVal.includes("teaching")) {
-                                    profile.teachingList.push({ id: codeVal || `TM-${Date.now()}`, name: nameVal, qtyUnit: statusVal || "1 unit", remarks: remarkVal, imageUri: null });
-                                    itemsImported++;
-                                } else if (catVal.includes("faulty")) {
-                                    profile.faultyList.push({ id: `F-${Date.now()}`, stockCode: codeVal, name: nameVal, problem: remarkVal || "Reported", date: new Date().toISOString().substring(0,10), status: statusVal || "Pending Repair", remarks: "", imageUri: null });
-                                    itemsImported++;
-                                } else if (catVal.includes("write off")) {
-                                    profile.writeOffList.push({ code: codeVal || `AST-${Date.now()}`, name: nameVal, reason: remarkVal || "Write Off", status: statusVal || "Pending", remarks: "", imageUri: null });
-                                    itemsImported++;
+                                if (catLower.includes("teaching")) {
+                                    if (nameVal || codeVal) {
+                                        profile.teachingList.push({ id: codeVal || `TM-${Date.now()}`, name: nameVal || codeVal, qtyUnit: extraVal1 || "1 unit", remarks: extraVal2 || "", imageUri: null });
+                                        itemsImported++;
+                                    }
+                                } else if (catLower.includes("faulty")) {
+                                    if (nameVal || codeVal) {
+                                        profile.faultyList.push({ id: `F-${Date.now()}`, stockCode: codeVal, name: nameVal || codeVal, problem: extraVal1 || "Reported", date: new Date().toISOString().substring(0,10), status: extraVal2 || "Pending Repair", remarks: "", imageUri: null });
+                                        itemsImported++;
+                                    }
+                                } else if (catLower.includes("write off")) {
+                                    if (nameVal || codeVal) {
+                                        profile.writeOffList.push({ code: codeVal || `AST-${Date.now()}`, name: nameVal || codeVal, reason: extraVal1 || "Write Off", status: extraVal2 || "Pending", remarks: "", imageUri: null });
+                                        itemsImported++;
+                                    }
                                 } else {
-                                    if (nameVal) {
-                                        profile.equipmentList.push({ code: codeVal || `EQ-${Date.now()}`, name: nameVal, imageUri: null, extraCells: {} });
+                                    let descName = nameVal || codeVal;
+                                    let stockCode = codeVal || `EQ-${Date.now()}`;
+
+                                    if (descName) {
+                                        profile.equipmentList.push({ code: stockCode, name: descName, imageUri: null, extraCells: {} });
                                         itemsImported++;
                                     }
                                 }
