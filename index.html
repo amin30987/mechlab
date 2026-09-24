@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MechLab">
     
-    <!-- Pustaka SheetJS untuk Membaca Fail Excel (.xlsx / .xls) & CSV -->
+    <!-- SheetJS Library for Reading Excel (.xlsx / .xls) & CSV -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -162,7 +162,7 @@
             localStorage.setItem('currentLab', state.currentLab);
         }
 
-        /* --- LOG AKTIVITI & MEREKOD AUDIT TRAIL CSV --- */
+        /* --- LOGGING & AUDIT TRAIL RECORDING --- */
         function addLog(location, category, actionType, details) {
             let now = new Date();
             let timestamp = now.getFullYear() + "-" + 
@@ -257,7 +257,7 @@
             }
         }
 
-        /* --- DASHBOARD UTAMA (4 BUTANG ASAL KEKAL 100%) --- */
+        /* --- DASHBOARD MAIN (ORIGINAL 4 BUTTONS UNTOUCHED) --- */
         function renderHome(container) {
             let labs = Object.keys(labProfiles);
             let optionsHTML = labs.length > 0 
@@ -293,7 +293,7 @@
 
         function checkLabAndNavigate(screen) {
             if (!state.currentLab) {
-                alert("Sila tambah atau pilih 'Lab Location' terlebih dahulu!");
+                alert("Please add or select a 'Lab Location' first!");
                 return;
             }
             switchScreen(screen);
@@ -494,7 +494,7 @@
             let code = document.getElementById('eq-code').value.trim();
             let name = document.getElementById('eq-name').value.trim();
             let targetLab = document.getElementById('eq-lab-target').value;
-            if (!code || !name) { alert("Enter Stock Code and Equipment Name!"); return; }
+            if (!code || !name) { alert("Please enter Stock Code and Equipment Name!"); return; }
 
             let currentProfile = labProfiles[state.currentLab];
             let targetProfile = labProfiles[targetLab];
@@ -569,7 +569,7 @@
             let name = document.getElementById('tm-name').value.trim();
             let qty = document.getElementById('tm-qty').value.trim();
             let remarks = document.getElementById('tm-remarks').value.trim();
-            if (!name || !qty) { alert("Enter Item Name and Quantity!"); return; }
+            if (!name || !qty) { alert("Please enter Item Name and Quantity!"); return; }
 
             let activeLab = labProfiles[state.currentLab];
             if (state.editingId) {
@@ -645,7 +645,7 @@
             let date = document.getElementById('f-date').value;
             let status = document.getElementById('f-status').value;
             let remarks = document.getElementById('f-remarks').value.trim();
-            if (!name) { alert("Enter Equipment Name!"); return; }
+            if (!name) { alert("Please enter Equipment Name!"); return; }
 
             let activeLab = labProfiles[state.currentLab];
             if (state.editingId) {
@@ -717,7 +717,7 @@
             let reason = document.getElementById('w-reason').value.trim();
             let status = document.getElementById('w-status').value;
             let remarks = document.getElementById('w-remarks').value.trim();
-            if (!code || !name) { alert("Enter Asset Code & Name!"); return; }
+            if (!code || !name) { alert("Please enter Asset Code & Name!"); return; }
 
             let activeLab = labProfiles[state.currentLab];
             if (state.editingId) {
@@ -804,7 +804,7 @@
             return 'Inventory';
         }
 
-        /* --- TAB MORE RINGKAS (HANYA IMPORT FAIL SAHAJA) --- */
+        /* --- MORE TAB (IMPORT & EXPORT AUDIT LOG CSV) --- */
         function renderMore(container) {
             container.innerHTML = `
                 <div class="card">
@@ -814,14 +814,15 @@
                 </div>
 
                 <div class="card">
-                    <h2>Import Inventory Data</h2>
-                    <p style="margin-bottom:8px;">Import data dari fail Excel (.xlsx, .xls) atau fail CSV (.csv).</p>
+                    <h2>Data Management</h2>
+                    <p style="margin-bottom:8px;">Import inventory data from Excel (.xlsx, .xls) or CSV files, or export your change log history.</p>
                     <button class="btn btn-green" onclick="triggerImport()">📂 Import Excel / CSV File</button>
+                    <button class="btn btn-blue" onclick="exportCSVChangeLog()">💾 Export Change Log (CSV)</button>
                 </div>
             `;
         }
 
-        /* --- TAB LOGS (PAPARAN REKOD SAHAJA) --- */
+        /* --- LOGS TAB (VIEW ONLY) --- */
         function renderLogs(container) {
             let html = `<h2>📋 Historical Change History</h2>`;
             if (activityLogs.length === 0) {
@@ -834,11 +835,43 @@
             container.innerHTML = html;
         }
 
+        /* --- EXPORT CSV AUDIT LOG FUNCTION --- */
+        function exportCSVChangeLog() {
+            if (csvAuditLogs.length === 0) {
+                alert("No change logs available to export!");
+                return;
+            }
+
+            let csvRows = [];
+            // CSV Header Row
+            csvRows.push(["No.", "Timestamp", "Location", "Category", "Action Type", "Details"]);
+
+            csvAuditLogs.forEach((log, index) => {
+                csvRows.push([
+                    index + 1,
+                    `"${log.timestamp}"`,
+                    `"${log.location}"`,
+                    `"${log.category}"`,
+                    `"${log.actionType}"`,
+                    `"${log.details.replace(/"/g, '""')}"`
+                ]);
+            });
+
+            let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csvRows.map(e => e.join(",")).join("\n");
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `MechLab_Inventory_Change_Log_${new Date().toISOString().slice(0,10)}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         function triggerImport() {
             document.getElementById('file-input-import').click();
         }
 
-        /* --- FUNGSI MELETAKKAN ISI FAIL IMPORT (.XLSX / .XLS / .CSV) KE DALAM SISTEM --- */
+        /* --- IMPORT EXCEL / CSV FUNCTION --- */
         function handleFileImportSelected(e) {
             let file = e.target.files[0];
             if (!file) return;
@@ -906,12 +939,12 @@
 
                     addLog(state.currentLab || 'SYSTEM', 'Import File', 'IMPORTED', `Imported ${itemsImported} item(s) from "${file.name}"`);
                     saveData();
-                    alert(`Berjaya mengimport ${itemsImported} rekod daripada fail "${file.name}"!`);
+                    alert(`Successfully imported ${itemsImported} record(s) from "${file.name}"!`);
                     switchScreen('HOME');
 
                 } catch (err) {
                     console.error(err);
-                    alert("Gagal membaca fail: " + err.message);
+                    alert("Failed to read file: " + err.message);
                 }
             };
 
