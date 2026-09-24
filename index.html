@@ -300,11 +300,10 @@
         }
 
         function onLabSwitched(newLab) {
-            state.currentLab = newLab;
-            saveData();
-            if (newLab) addLog(newLab, 'Location', 'SWITCHED', `Switched active lab location to: ${newLab}`);
-            render();
-        }
+    state.currentLab = newLab;
+    saveData();
+    render();
+}
 
         function addLabPrompt() {
             let name = prompt("Enter New Lab Location Name:");
