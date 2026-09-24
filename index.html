@@ -133,7 +133,10 @@
         <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
     </nav>
 
-    <input type="file" id="file-input-import" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImportSelected(event)">
+    <!-- Import Input: Append vs Overwrite -->
+    <input type="file" id="file-input-import" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImportSelected(event, false)">
+    <input type="file" id="file-input-overwrite" accept=".xlsx, .xls, .csv" class="hidden" onchange="handleFileImportSelected(event, true)">
+    
     <input type="file" id="file-input-img" accept="image/*" class="hidden" onchange="handleImageFileSelected(event)">
     <input type="file" id="camera-input-img" accept="image/*" capture="environment" class="hidden" onchange="handleImageFileSelected(event)">
 
@@ -262,7 +265,7 @@
             let labs = Object.keys(labProfiles);
             let optionsHTML = labs.length > 0 
                 ? labs.map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('')
-                : `<option value="">-- No Lab Created Yet --</option>`;
+                : `<option value="">-- No Lab Location Found --</option>`;
 
             let html = `
                 <div class="text-center" style="margin-bottom: 16px;">
@@ -803,7 +806,7 @@
             return 'Inventory';
         }
 
-        /* --- MORE TAB --- */
+        /* --- MORE TAB (APPEND & OVERWRITE OPTIONS) --- */
         function renderMore(container) {
             container.innerHTML = `
                 <div class="card">
@@ -814,8 +817,9 @@
 
                 <div class="card">
                     <h2>Data Management</h2>
-                    <p style="margin-bottom:8px;">Import inventory data from Excel (.xlsx, .xls) or CSV files, or export your categorized change logs into separate tabs.</p>
-                    <button class="btn btn-green" onclick="triggerImport()">📂 Import Excel / CSV File</button>
+                    <p style="margin-bottom:8px;">Open or import inventory files (.xlsx, .xls, .csv). You can choose to append data or completely clear existing files.</p>
+                    <button class="btn btn-green" onclick="triggerImport(false)">📂 Open / Merge File (Append Data)</button>
+                    <button class="btn btn-orange" onclick="triggerImport(true)">🆕 Open New File (Overwrite Recent Data)</button>
                     <button class="btn btn-blue" onclick="exportCSVChangeLog()">💾 Export Categorized Logs (.xlsx)</button>
                 </div>
             `;
@@ -845,7 +849,6 @@
                 return;
             }
 
-            // Categories mapping
             let categories = {
                 "Equipment List": [],
                 "Teaching Materials": [],
@@ -900,43 +903,104 @@
             XLSX.writeFile(workbook, `MechLab_Change_Logs_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
-        function triggerImport() {
-            document.getElementById('file-input-import').click();
+        function triggerImport(isOverwrite = false) {
+            if (isOverwrite) {
+                if (confirm("Are you sure you want to open a new file?\nThis will clear all current lab data and replace it with the new file.")) {
+                    document.getElementById('file-input-overwrite').click();
+                }
+            } else {
+                document.getElementById('file-input-import').click();
+            }
         }
 
-        /* --- IMPORT EXCEL / CSV --- */
-        function handleFileImportSelected(e) {
+        /* --- IMPORT & AUTO-RECOGNIZE CSV / EXCEL CATEGORIES --- */
+        function handleFileImportSelected(e, isOverwrite = false) {
             let file = e.target.files[0];
             if (!file) return;
 
             let reader = new FileReader();
-            let isCSV = file.name.endsWith('.csv');
+            let isCSV = file.name.toLowerCase().endsWith('.csv');
 
             reader.onload = function(evt) {
                 try {
+                    // Overwrite Mode: Clear existing lab profiles completely
+                    if (isOverwrite) {
+                        labProfiles = {};
+                        activityLogs = [];
+                        csvAuditLogs = [];
+                    }
+
                     let itemsImported = 0;
 
                     if (isCSV) {
                         let csvText = evt.target.result;
                         let lines = csvText.split("\n");
-                        
+                        let currentCategory = "Equipment List";
+
                         lines.forEach((line, idx) => {
-                            if (idx === 0 || !line.trim()) return;
+                            if (!line.trim()) return;
+                            
+                            let lineLower = line.toLowerCase();
+                            
+                            // Detect Section Headers inside CSV
+                            if (lineLower.includes("teaching material")) { currentCategory = "Teaching Materials"; return; }
+                            if (lineLower.includes("faulty") || lineLower.includes("repair")) { currentCategory = "Faulty Report"; return; }
+                            if (lineLower.includes("write off") || lineLower.includes("disposal")) { currentCategory = "Asset Write Off"; return; }
+                            if (lineLower.includes("equipment list")) { currentCategory = "Equipment List"; return; }
+
+                            if (idx === 0 && lineLower.includes("timestamp")) return; // Skip CSV headers if matching audit log
+
                             let cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
 
-                            if (cols.length >= 3) {
-                                let loc = cols[0] || state.currentLab || "Main Lab";
-                                let code = cols[1];
-                                let name = cols[2];
+                            if (cols.length >= 2) {
+                                let loc = cols[0] || "Main Lab";
+                                
+                                // Ignore header rows
+                                if (loc.toLowerCase() === 'location' || loc.toLowerCase() === 'no.' || loc.toLowerCase() === 'no') return;
 
-                                if (!labProfiles[loc]) labProfiles[loc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-                                if (code && name && !labProfiles[loc].equipmentList.some(i => i.code === code)) {
-                                    labProfiles[loc].equipmentList.push({ code, name, imageUri: null, extraCells: {} });
-                                    itemsImported++;
+                                if (!labProfiles[loc]) {
+                                    labProfiles[loc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
+                                }
+                                let profile = labProfiles[loc];
+
+                                if (currentCategory === "Equipment List") {
+                                    let code = cols[1] || `EQ-${Date.now()}`;
+                                    let name = cols[2] || cols[1];
+                                    if (name && !profile.equipmentList.some(i => i.code === code)) {
+                                        profile.equipmentList.push({ code, name, imageUri: null, extraCells: {} });
+                                        itemsImported++;
+                                    }
+                                } else if (currentCategory === "Teaching Materials") {
+                                    let name = cols[1];
+                                    let qtyUnit = cols[2] || "1 unit";
+                                    let remarks = cols[3] || "";
+                                    if (name) {
+                                        profile.teachingList.push({ id: `TM-${Date.now()}-${Math.random().toString(36).substr(2,4)}`, name, qtyUnit, remarks, imageUri: null });
+                                        itemsImported++;
+                                    }
+                                } else if (currentCategory === "Faulty Report") {
+                                    let stockCode = cols[1];
+                                    let name = cols[2] || cols[1];
+                                    let problem = cols[3] || "Faulty";
+                                    let status = cols[4] || "Pending Repair";
+                                    if (name) {
+                                        profile.faultyList.push({ id: `F-${Date.now()}-${Math.random().toString(36).substr(2,4)}`, stockCode, name, problem, date: new Date().toISOString().substring(0,10), status, remarks: "", imageUri: null });
+                                        itemsImported++;
+                                    }
+                                } else if (currentCategory === "Asset Write Off") {
+                                    let code = cols[1] || `AST-${Date.now()}`;
+                                    let name = cols[2] || cols[1];
+                                    let reason = cols[3] || "Damaged";
+                                    let status = cols[4] || "Pending";
+                                    if (name) {
+                                        profile.writeOffList.push({ code, name, reason, status, remarks: "", imageUri: null });
+                                        itemsImported++;
+                                    }
                                 }
                             }
                         });
                     } else {
+                        // Excel (.xlsx / .xls) Multi-Sheet parsing
                         let arrayBuffer = evt.target.result;
                         let workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
@@ -965,19 +1029,18 @@
                         });
                     }
 
+                    // Set active lab to first detected location
                     let keys = Object.keys(labProfiles);
-                    if (keys.length > 0 && (!state.currentLab || !labProfiles[state.currentLab])) {
-                        state.currentLab = keys[0];
-                    }
+                    state.currentLab = keys.length > 0 ? keys[0] : '';
 
-                    addLog(state.currentLab || 'SYSTEM', 'Import File', 'IMPORTED', `Imported ${itemsImported} item(s) from "${file.name}"`);
+                    addLog(state.currentLab || 'SYSTEM', 'Import File', 'IMPORTED', `${isOverwrite ? 'Cleared recent data & loaded' : 'Imported'} ${itemsImported} item(s) from "${file.name}"`);
                     saveData();
-                    alert(`Successfully imported ${itemsImported} record(s) from "${file.name}"!`);
+                    alert(`Success! ${isOverwrite ? 'Previous data cleared.' : ''} Imported ${itemsImported} record(s) across ${keys.length} location(s).`);
                     switchScreen('HOME');
 
                 } catch (err) {
                     console.error(err);
-                    alert("Failed to read file: " + err.message);
+                    alert("Failed to process file: " + err.message);
                 }
             };
 
