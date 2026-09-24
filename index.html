@@ -10,7 +10,7 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="MechLab">
     
-    <!-- SheetJS Library for Reading Excel (.xlsx / .xls) & CSV -->
+    <!-- SheetJS Library for Reading & Writing Multi-Tab Excel (.xlsx / .xls) & CSV -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -257,7 +257,7 @@
             }
         }
 
-        /* --- DASHBOARD MAIN (ORIGINAL 4 BUTTONS UNTOUCHED) --- */
+        /* --- DASHBOARD MAIN --- */
         function renderHome(container) {
             let labs = Object.keys(labProfiles);
             let optionsHTML = labs.length > 0 
@@ -300,10 +300,10 @@
         }
 
         function onLabSwitched(newLab) {
-    state.currentLab = newLab;
-    saveData();
-    render();
-}
+            state.currentLab = newLab;
+            saveData();
+            render();
+        }
 
         function addLabPrompt() {
             let name = prompt("Enter New Lab Location Name:");
@@ -426,7 +426,7 @@
         function getCategoryName(screen) {
             if (screen === 'EQUIPMENT_LIST') return 'Equipment List';
             if (screen === 'TEACHING_LIST') return 'Teaching Materials';
-            if (screen === 'FAULTY_LIST') return 'Faulty / Repair';
+            if (screen === 'FAULTY_LIST') return 'Faulty Report';
             if (screen === 'WRITEOFF_LIST') return 'Asset Write Off';
             return 'Inventory';
         }
@@ -798,12 +798,12 @@
         function getCategoryNameByKey(listKey) {
             if (listKey === 'equipmentList') return 'Equipment List';
             if (listKey === 'teachingList') return 'Teaching Materials';
-            if (listKey === 'faultyList') return 'Faulty / Repair';
+            if (listKey === 'faultyList') return 'Faulty Report';
             if (listKey === 'writeOffList') return 'Asset Write Off';
             return 'Inventory';
         }
 
-        /* --- MORE TAB (IMPORT & EXPORT AUDIT LOG CSV) --- */
+        /* --- MORE TAB --- */
         function renderMore(container) {
             container.innerHTML = `
                 <div class="card">
@@ -814,63 +814,97 @@
 
                 <div class="card">
                     <h2>Data Management</h2>
-                    <p style="margin-bottom:8px;">Import inventory data from Excel (.xlsx, .xls) or CSV files, or export your change log history.</p>
+                    <p style="margin-bottom:8px;">Import inventory data from Excel (.xlsx, .xls) or CSV files, or export your categorized change logs into separate tabs.</p>
                     <button class="btn btn-green" onclick="triggerImport()">📂 Import Excel / CSV File</button>
-                    <button class="btn btn-blue" onclick="exportCSVChangeLog()">💾 Export Change Log (CSV)</button>
+                    <button class="btn btn-blue" onclick="exportCSVChangeLog()">💾 Export Categorized Logs (.xlsx)</button>
                 </div>
             `;
         }
 
-        /* --- LOGS TAB (VIEW ONLY) --- */
+        /* --- LOGS TAB --- */
         function renderLogs(container) {
             let html = `<h2>📋 Historical Change History</h2>`;
-            if (activityLogs.length === 0) {
+            let filteredLogs = activityLogs.filter(log => !log.includes('[SWITCHED]'));
+
+            if (filteredLogs.length === 0) {
                 html += `<p style="margin-top:8px;">No activity logs recorded yet.</p>`;
             } else {
-                activityLogs.forEach(log => {
+                filteredLogs.forEach(log => {
                     html += `<div class="card" style="padding:10px; margin-top:8px;"><p style="font-size:12px; color:#0a192d;">${log}</p></div>`;
                 });
             }
             container.innerHTML = html;
         }
 
-        /* --- EXPORT CSV AUDIT LOG FUNCTION --- */
+        /* --- EXPORT CHANGE LOG TO MULTI-TAB EXCEL (.XLSX) --- */
         function exportCSVChangeLog() {
-            if (csvAuditLogs.length === 0) {
+            let filteredLogs = csvAuditLogs.filter(log => log.actionType !== 'SWITCHED');
+
+            if (filteredLogs.length === 0) {
                 alert("No change logs available to export!");
                 return;
             }
 
-            let csvRows = [];
-            // CSV Header Row
-            csvRows.push(["No.", "Timestamp", "Location", "Category", "Action Type", "Details"]);
+            // Categories mapping
+            let categories = {
+                "Equipment List": [],
+                "Teaching Materials": [],
+                "Faulty Report": [],
+                "Asset Write Off": [],
+                "General & Import": []
+            };
 
-            csvAuditLogs.forEach((log, index) => {
-                csvRows.push([
-                    index + 1,
-                    `"${log.timestamp}"`,
-                    `"${log.location}"`,
-                    `"${log.category}"`,
-                    `"${log.actionType}"`,
-                    `"${log.details.replace(/"/g, '""')}"`
-                ]);
+            filteredLogs.forEach((log) => {
+                let targetCategory = "General & Import";
+
+                if (log.category === "Equipment List") targetCategory = "Equipment List";
+                else if (log.category === "Teaching Materials") targetCategory = "Teaching Materials";
+                else if (log.category === "Faulty Report" || log.category === "Faulty / Repair") targetCategory = "Faulty Report";
+                else if (log.category === "Asset Write Off") targetCategory = "Asset Write Off";
+
+                categories[targetCategory].push(log);
             });
 
-            let csvContent = "data:text/csv;charset=utf-8,\uFEFF" + csvRows.map(e => e.join(",")).join("\n");
-            let encodedUri = encodeURI(csvContent);
-            let link = document.createElement("a");
-            link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `MechLab_Inventory_Change_Log_${new Date().toISOString().slice(0,10)}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
+            let workbook = XLSX.utils.book_new();
+            let header = ["No.", "Timestamp", "Location", "Category", "Action Type", "Details"];
+
+            Object.keys(categories).forEach(catName => {
+                let logs = categories[catName];
+                let sheetData = [header];
+
+                logs.forEach((log, index) => {
+                    sheetData.push([
+                        index + 1,
+                        log.timestamp,
+                        log.location,
+                        log.category,
+                        log.actionType,
+                        log.details
+                    ]);
+                });
+
+                let worksheet = XLSX.utils.aoa_to_sheet(sheetData);
+
+                worksheet['!cols'] = [
+                    { wch: 6 },
+                    { wch: 20 },
+                    { wch: 15 },
+                    { wch: 20 },
+                    { wch: 15 },
+                    { wch: 60 }
+                ];
+
+                XLSX.utils.book_append_sheet(workbook, worksheet, catName);
+            });
+
+            XLSX.writeFile(workbook, `MechLab_Change_Logs_${new Date().toISOString().slice(0,10)}.xlsx`);
         }
 
         function triggerImport() {
             document.getElementById('file-input-import').click();
         }
 
-        /* --- IMPORT EXCEL / CSV FUNCTION --- */
+        /* --- IMPORT EXCEL / CSV --- */
         function handleFileImportSelected(e) {
             let file = e.target.files[0];
             if (!file) return;
