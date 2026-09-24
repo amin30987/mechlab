@@ -155,8 +155,23 @@
         let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
         let csvAuditLogs = JSON.parse(localStorage.getItem('csvAuditLogs')) || [];
 
+        // Clean numeric keys from labProfiles
+        cleanNumericLocations();
+
         let labKeys = Object.keys(labProfiles);
         state.currentLab = localStorage.getItem('currentLab') || (labKeys.length > 0 ? labKeys[0] : '');
+
+        function cleanNumericLocations() {
+            let keys = Object.keys(labProfiles);
+            let updated = false;
+            keys.forEach(k => {
+                if (/^\d+$/.test(k.trim())) {
+                    delete labProfiles[k];
+                    updated = true;
+                }
+            });
+            if (updated) saveData();
+        }
 
         function saveData() {
             localStorage.setItem('labProfiles', JSON.stringify(labProfiles));
@@ -214,6 +229,7 @@
         }
 
         function render() {
+            cleanNumericLocations();
             let content = document.getElementById('app-content');
             let backBtn = document.getElementById('back-btn');
             let headerTitle = document.getElementById('header-title');
@@ -262,7 +278,7 @@
 
         /* --- DASHBOARD MAIN --- */
         function renderHome(container) {
-            let labs = Object.keys(labProfiles);
+            let labs = Object.keys(labProfiles).filter(l => !/^\d+$/.test(l));
             let optionsHTML = labs.length > 0 
                 ? labs.map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('')
                 : `<option value="">-- No Lab Location Found --</option>`;
@@ -312,6 +328,10 @@
             let name = prompt("Enter New Lab Location Name:");
             if (name && name.trim()) {
                 name = name.trim();
+                if (/^\d+$/.test(name)) {
+                    alert("Lab location name cannot be numbers only!");
+                    return;
+                }
                 if (!labProfiles[name]) {
                     labProfiles[name] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                     state.currentLab = name;
@@ -330,7 +350,7 @@
                 let deletedLab = state.currentLab;
                 delete labProfiles[state.currentLab];
                 addLog(deletedLab, 'Location', 'DELETED', `Deleted lab profile: ${deletedLab}`);
-                let keys = Object.keys(labProfiles);
+                let keys = Object.keys(labProfiles).filter(l => !/^\d+$/.test(l));
                 state.currentLab = keys.length > 0 ? keys[0] : '';
                 saveData();
                 render();
@@ -469,7 +489,7 @@
             let item = activeLab ? activeLab.equipmentList.find(i => i.code === state.editingId) : null;
             state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
 
-            let labsOptions = Object.keys(labProfiles).map(l => 
+            let labsOptions = Object.keys(labProfiles).filter(l => !/^\d+$/.test(l)).map(l => 
                 `<option value="${l}" ${l === state.currentLab ? 'selected' : ''}>${l}</option>`
             ).join('');
 
@@ -806,7 +826,7 @@
             return 'Inventory';
         }
 
-        /* --- MORE TAB (APPEND & OVERWRITE OPTIONS) --- */
+        /* --- MORE TAB --- */
         function renderMore(container) {
             container.innerHTML = `
                 <div class="card">
@@ -913,8 +933,165 @@
             }
         }
 
-        /* --- IMPORT & AUTO-RECOGNIZE CSV / EXCEL CATEGORIES --- */
-        function handleFileImportSelected
+        /* --- IMPORT & AUTO-RECOGNIZE CSV / EXCEL CATEGORIES (FIXED LOCATION ISSUES) --- */
+        function handleFileImportSelected(e, isOverwrite = false) {
+            let file = e.target.files[0];
+            if (!file) return;
+
+            let reader = new FileReader();
+            let isCSV = file.name.toLowerCase().endsWith('.csv');
+
+            reader.onload = function(evt) {
+                try {
+                    if (isOverwrite) {
+                        labProfiles = {};
+                        activityLogs = [];
+                        csvAuditLogs = [];
+                    }
+
+                    let itemsImported = 0;
+
+                    if (isCSV) {
+                        let csvText = evt.target.result;
+                        let lines = csvText.split("\n");
+                        let currentCategory = "Equipment List";
+
+                        // Get filename clean base name
+                        let filenameLab = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_\-\s]/g, "").trim();
+                        let headerLab = "";
+
+                        for (let l of lines) {
+                            let match = l.match(/Lab\s*Location\s*[:\t,]\s*["']?([^"',\n\r]+)["']?/i);
+                            if (match && match[1]) {
+                                headerLab = match[1].trim();
+                                break;
+                            }
+                        }
+
+                        // Determine Target Location
+                        let targetLab = "";
+                        if (headerLab && !/^\d+$/.test(headerLab)) {                             targetLab = headerLab;                         } else if (filenameLab && !/^\d+$/.test(filenameLab) && !filenameLab.toLowerCase().includes("mechlab") && !filenameLab.toLowerCase().includes("change_log")) {
+                            targetLab = filenameLab;
+                        } else {
+                            targetLab = prompt("Please enter the Lab Location Name for this CSV file:", "N101A");
+                            if (!targetLab || !targetLab.trim()) targetLab = "Main Lab";
+                            else targetLab = targetLab.trim();
+                        }
+
+                        if (!labProfiles[targetLab]) {
+                            labProfiles[targetLab] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
+                        }
+                        let profile = labProfiles[targetLab];
+
+                        lines.forEach((line, idx) => {
+                            if (!line.trim()) return;
+                            
+                            let lineLower = line.toLowerCase();
+                            
+                            if (lineLower.includes("teaching material")) { currentCategory = "Teaching Materials"; return; }
+                            if (lineLower.includes("faulty") || lineLower.includes("repair")) { currentCategory = "Faulty Report"; return; }
+                            if (lineLower.includes("write off") || lineLower.includes("disposal")) { currentCategory = "Asset Write Off"; return; }
+                            if (lineLower.includes("equipment list")) { currentCategory = "Equipment List"; return; }
+
+                            if (idx === 0 && (lineLower.includes("timestamp") || lineLower.includes("no."))) return; 
+
+                            let cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
+
+                            if (cols.length >= 1) {
+                                let col0 = cols[0];
+                                let isNum = /^\d+$/.test(col0);
+
+                                if (currentCategory === "Equipment List") {
+                                    let code = isNum ? cols[1] : cols[0];
+                                    let name = isNum ? (cols[2] || cols[1]) : (cols[1] || cols[0]);
+
+                                    if (code && name && code.toLowerCase() !== 'equipment code' && code.toLowerCase() !== 'code' && code.toLowerCase() !== 'no' && code.toLowerCase() !== 'no.') {
+                                        if (!profile.equipmentList.some(i => i.code === code)) {
+                                            profile.equipmentList.push({ code, name, imageUri: null, extraCells: {} });
+                                            itemsImported++;
+                                        }
+                                    }
+                                } else if (currentCategory === "Teaching Materials") {
+                                    let name = isNum ? cols[1] : cols[0];
+                                    let qtyUnit = isNum ? (cols[2] || "1 unit") : (cols[1] || "1 unit");
+                                    let remarks = isNum ? (cols[3] || "") : (cols[2] || "");
+                                    if (name && name.toLowerCase() !== 'item name' && name.toLowerCase() !== 'no' && name.toLowerCase() !== 'no.') {
+                                        profile.teachingList.push({ id: `TM-${Date.now()}-${Math.random().toString(36).substr(2,4)}`, name, qtyUnit, remarks, imageUri: null });
+                                        itemsImported++;
+                                    }
+                                } else if (currentCategory === "Faulty Report") {
+                                    let stockCode = isNum ? cols[1] : cols[0];
+                                    let name = isNum ? (cols[2] || cols[1]) : (cols[1] || cols[0]);
+                                    let problem = isNum ? (cols[3] || "Faulty") : (cols[2] || "Faulty");
+                                    let status = isNum ? (cols[4] || "Pending Repair") : (cols[3] || "Pending Repair");
+                                    if (name && name.toLowerCase() !== 'equipment name' && name.toLowerCase() !== 'no' && name.toLowerCase() !== 'no.') {
+                                        profile.faultyList.push({ id: `F-${Date.now()}-${Math.random().toString(36).substr(2,4)}`, stockCode, name, problem, date: new Date().toISOString().substring(0,10), status, remarks: "", imageUri: null });
+                                        itemsImported++;
+                                    }
+                                } else if (currentCategory === "Asset Write Off") {
+                                    let code = isNum ? cols[1] : cols[0];
+                                    let name = isNum ? (cols[2] || cols[1]) : (cols[1] || cols[0]);
+                                    let reason = isNum ? (cols[3] || "Damaged") : (cols[2] || "Damaged");
+                                    let status = isNum ? (cols[4] || "Pending") : (cols[3] || "Pending");
+                                    if (name && name.toLowerCase() !== 'asset name' && name.toLowerCase() !== 'no' && name.toLowerCase() !== 'no.') {
+                                        profile.writeOffList.push({ code, name, reason, status, remarks: "", imageUri: null });
+                                        itemsImported++;
+                                    }
+                                }
+                            }
+                        });
+                    } else {
+                        // Excel (.xlsx / .xls) Multi-Sheet parsing
+                        let arrayBuffer = evt.target.result;
+                        let workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+                        workbook.SheetNames.forEach(sheetName => {
+                            let trimmedName = sheetName.trim();
+                            if (/^\d+$/.test(trimmedName)) return;
+
+                            let worksheet = workbook.Sheets[sheetName];
+
+                            if (!labProfiles[trimmedName]) {
+                                labProfiles[trimmedName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
+                            }
+                            let profile = labProfiles[trimmedName];
+
+                            let jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                            jsonRows.forEach((row, rIdx) => {
+                                if (rIdx < 10 || !row) return;
+                                let descName = row[3] ? String(row[3]).trim() : '';
+                                let stockCode = row[19] ? String(row[19]).trim() : '';
+
+                                if (descName && stockCode && !stockCode.startsWith("(")) {
+                                    if (!profile.equipmentList.some(i => i.code === stockCode)) {
+                                        profile.equipmentList.push({ code: stockCode, name: descName, imageUri: null, extraCells: {} });
+                                        itemsImported++;
+                                    }
+                                }
+                            });
+                        });
+                    }
+
+                    cleanNumericLocations();
+                    let keys = Object.keys(labProfiles).filter(l => !/^\d+$/.test(l));
+                    state.currentLab = keys.length > 0 ? keys[0] : '';
+
+                    addLog(state.currentLab || 'SYSTEM', 'Import File', 'IMPORTED', `${isOverwrite ? 'Cleared recent data & loaded' : 'Imported'} ${itemsImported} item(s) from "${file.name}"`);
+                    saveData();
+                    alert(`Success! ${isOverwrite ? 'Previous data cleared.' : ''} Imported ${itemsImported} record(s) into location '${state.currentLab}'.`);
+                    switchScreen('HOME');
+
+                } catch (err) {
+                    console.error(err);
+                    alert("Failed to process file: " + err.message);
+                }
+            };
+
+            if (isCSV) reader.readAsText(file);
+            else reader.readAsArrayBuffer(file);
+
+            e.target.value = '';
+        }
 
         render();
 
