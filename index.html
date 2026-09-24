@@ -155,8 +155,7 @@
         let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
         let csvAuditLogs = JSON.parse(localStorage.getItem('csvAuditLogs')) || [];
 
-        // Reserved category names that cannot be used as Lab Location names
-        const reservedCategoryNames = [
+        const invalidLocationWords = [
             "equipment list", 
             "teaching materials", 
             "faulty report", 
@@ -165,20 +164,18 @@
             "general & import", 
             "general", 
             "location", 
-            "category"
+            "category",
+            "action type",
+            "timestamp",
+            "no",
+            "no."
         ];
-
-        // Clean invalid locations from profiles
-        cleanInvalidLocations();
-
-        let labKeys = Object.keys(labProfiles).filter(isValidLocationName);
-        state.currentLab = localStorage.getItem('currentLab') || (labKeys.length > 0 ? labKeys[0] : '');
 
         function isValidLocationName(name) {
             if (!name) return false;
             let trimmed = String(name).trim().toLowerCase();
-            if (/^\d+$/.test(trimmed)) return false; // Reject numeric only
-            if (reservedCategoryNames.includes(trimmed)) return false; // Reject category headers
+            if (/^\d+$/.test(trimmed)) return false; // Discard numbers only
+            if (invalidLocationWords.includes(trimmed)) return false; // Discard header keywords
             return true;
         }
 
@@ -193,6 +190,10 @@
             });
             if (updated) saveData();
         }
+
+        cleanInvalidLocations();
+        let labKeys = Object.keys(labProfiles).filter(isValidLocationName);
+        state.currentLab = localStorage.getItem('currentLab') || (labKeys.length > 0 ? labKeys[0] : '');
 
         function saveData() {
             localStorage.setItem('labProfiles', JSON.stringify(labProfiles));
@@ -954,7 +955,7 @@
             }
         }
 
-        /* --- IMPORT CSV / EXCEL PARSER (FIXED LOG IMPORT PARSING) --- */
+        /* --- IMPORT CSV / EXCEL PARSER (ROBUST MULTI-FORMAT SUPPORT) --- */
         function handleFileImportSelected(e, isOverwrite = false) {
             let file = e.target.files[0];
             if (!file) return;
@@ -976,60 +977,59 @@
                         let csvText = evt.target.result;
                         let lines = csvText.split("\n");
 
+                        // Clean filename without extension
+                        let cleanFilename = file.name.replace(/\.[^/.]+$/, "").replace(/[^a-zA-Z0-9_\-\s]/g, "").trim();
+
                         lines.forEach((line, idx) => {
                             if (!line.trim()) return;
                             let lineLower = line.toLowerCase();
 
-                            // Skip table headers
-                            if (idx === 0 && (lineLower.includes("timestamp") || lineLower.includes("action type") || lineLower.includes("no."))) return;
+                            // Skip header row
+                            if (idx === 0 && (lineLower.includes("timestamp") || lineLower.includes("action type") || lineLower.includes("no.") || lineLower.includes("details"))) return;
 
                             let cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
 
-                            if (cols.length >= 4) {
-                                // Checking if it is an Exported Audit Log format (No, Timestamp, Location, Category, Action Type, Details)
-                                let locCandidate = cols[2];
-                                let categoryCandidate = cols[3];
-                                let details = cols[5] || cols[4] || "";
+                            if (cols.length >= 3) {
+                                let locCandidate = cols[2] || cols[0];
+                                let categoryCandidate = cols[3] || cols[1] || "Equipment List";
+                                let details = cols[5] || cols[4] || cols[2] || cols[1] || "";
 
-                                if (isValidLocationName(locCandidate)) {
-                                    let loc = locCandidate;
-                                    if (!labProfiles[loc]) {
-                                        labProfiles[loc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-                                    }
-                                    let profile = labProfiles[loc];
-
-                                    let category = categoryCandidate.toLowerCase();
-
-                                    if (category.includes("equipment")) {
-                                        let code = `EQ-${Date.now()}-${Math.floor(Math.random()*1000)}`;
-                                        let name = details;
-                                        profile.equipmentList.push({ code, name, imageUri: null, extraCells: {} });
-                                        itemsImported++;
-                                    } else if (category.includes("teaching")) {
-                                        profile.teachingList.push({ id: `TM-${Date.now()}-${Math.random().toString(36).substr(2,4)}`, name: details, qtyUnit: "1 unit", remarks: "", imageUri: null });
-                                        itemsImported++;
-                                    } else if (category.includes("faulty")) {
-                                        profile.faultyList.push({ id: `F-${Date.now()}-${Math.random().toString(36).substr(2,4)}`, stockCode: "N/A", name: details, problem: "Reported", date: new Date().toISOString().substring(0,10), status: "Pending Repair", remarks: "", imageUri: null });
-                                        itemsImported++;
-                                    } else if (category.includes("write off")) {
-                                        profile.writeOffList.push({ code: `AST-${Date.now()}`, name: details, reason: "Write Off", status: "Pending", remarks: "", imageUri: null });
-                                        itemsImported++;
-                                    }
-                                }
-                            } else if (cols.length >= 2) {
-                                // Standard CSV format fallback
-                                let loc = isValidLocationName(cols[0]) ? cols[0] : (state.currentLab || "Main Lab");
+                                // Determine location
+                                let loc = isValidLocationName(locCandidate) ? locCandidate : (isValidLocationName(cleanFilename) ? cleanFilename : "SE009");
+                                
                                 if (!labProfiles[loc]) {
                                     labProfiles[loc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                                 }
                                 let profile = labProfiles[loc];
-                                let code = cols[1] || `EQ-${Date.now()}`;
-                                let name = cols[2] || cols[1];
 
-                                if (code && name && isValidLocationName(loc)) {
-                                    profile.equipmentList.push({ code, name, imageUri: null, extraCells: {} });
+                                let cat = categoryCandidate.toLowerCase();
+
+                                if (cat.includes("teaching")) {
+                                    profile.teachingList.push({ id: `TM-${Date.now()}-${Math.random().toString(36).substr(2,4)}`, name: details, qtyUnit: "1 unit", remarks: "", imageUri: null });
                                     itemsImported++;
+                                } else if (cat.includes("faulty") || cat.includes("repair")) {
+                                    profile.faultyList.push({ id: `F-${Date.now()}-${Math.random().toString(36).substr(2,4)}`, stockCode: "N/A", name: details, problem: "Faulty Report", date: new Date().toISOString().substring(0,10), status: "Pending Repair", remarks: "", imageUri: null });
+                                    itemsImported++;
+                                } else if (cat.includes("write off") || cat.includes("disposal")) {
+                                    profile.writeOffList.push({ code: `AST-${Date.now()}`, name: details, reason: "Write Off Proposal", status: "Pending", remarks: "", imageUri: null });
+                                    itemsImported++;
+                                } else {
+                                    // Default to Equipment List
+                                    let code = `EQ-${Date.now()}-${Math.floor(Math.random()*1000)}`;
+                                    let name = details || cols[1] || cols[0];
+                                    if (name) {
+                                        profile.equipmentList.push({ code, name, imageUri: null, extraCells: {} });
+                                        itemsImported++;
+                                    }
                                 }
+                            } else if (cols.length >= 1 && cols[0].trim().length > 0) {
+                                let name = cols[1] || cols[0];
+                                let loc = isValidLocationName(cleanFilename) ? cleanFilename : (state.currentLab || "SE009");
+                                if (!labProfiles[loc]) {
+                                    labProfiles[loc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
+                                }
+                                labProfiles[loc].equipmentList.push({ code: `EQ-${Date.now()}`, name, imageUri: null, extraCells: {} });
+                                itemsImported++;
                             }
                         });
                     } else {
