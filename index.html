@@ -1,11 +1,11 @@
 <!DOCTYPE html>
-<html lang="ms">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Universal Multi-Location Lab Inventory</title>
 
-    <!-- Library khas untuk membaca fail Excel (.xls, .xlsx) dan .csv -->
+    <!-- SheetJS library to read Excel (.xls, .xlsx) and .csv files -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 
     <style>
@@ -56,13 +56,16 @@
         <button class="tab-btn" onclick="switchScreen('MORE')">⋮ More</button>
     </nav>
 
-    <!-- Terima fail CSV, XLS, dan XLSX -->
+    <!-- Accept CSV, XLS, and XLSX files -->
     <input type="file" id="file-input-excel" accept=".csv, .xls, .xlsx" class="hidden" onchange="handleExcelImport(event)">
 
     <script>
         let state = { currentScreen: 'HOME', currentLab: '', searchQuery: '', editingId: null, screenStack: ['HOME'] };
 
+        // Flexible lab profiles structure
         let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {};
+
+        // Audit Logs array
         let changeLogs = JSON.parse(localStorage.getItem('changeLogs')) || [];
 
         let labKeys = Object.keys(labProfiles);
@@ -74,6 +77,7 @@
             localStorage.setItem('currentLab', state.currentLab);
         }
 
+        /* --- AUDIT LOGGING --- */
         function logChange(location, category, actionType, remarks) {
             let now = new Date();
             let timestamp = now.getFullYear() + "-" + 
@@ -86,7 +90,7 @@
                 timestamp: timestamp,
                 location: location,
                 category: category,
-                actionType: actionType,
+                actionType: actionType, // ADDED, UPDATED, MOVED, DELETED
                 remarks: remarks
             });
             saveData();
@@ -127,6 +131,12 @@
                 case 'HOME': renderHome(content); break;
                 case 'EQUIPMENT_LIST': renderEquipmentList(content); break;
                 case 'EQUIPMENT_EDIT': renderEquipmentEdit(content); break;
+                case 'TEACHING_LIST': renderTeachingList(content); break;
+                case 'TEACHING_EDIT': renderTeachingEdit(content); break;
+                case 'FAULTY_LIST': renderFaultyList(content); break;
+                case 'FAULTY_EDIT': renderFaultyEdit(content); break;
+                case 'WRITEOFF_LIST': renderWriteOffList(content); break;
+                case 'WRITEOFF_EDIT': renderWriteOffEdit(content); break;
                 case 'LOGS': renderLogs(content); break;
                 case 'MORE': renderMore(content); break;
             }
@@ -136,8 +146,14 @@
             switch(screen) {
                 case 'HOME': return 'Lab Inventory';
                 case 'EQUIPMENT_LIST': return 'Equipment List';
-                case 'EQUIPMENT_EDIT': return state.editingId ? 'Edit / Transfer Equipment' : 'Add Equipment';
-                case 'LOGS': return 'Change & Audit Logs';
+                case 'EQUIPMENT_EDIT': return state.editingId ? 'Edit Equipment' : 'Add Equipment';
+                case 'TEACHING_LIST': return 'Teaching Materials';
+                case 'TEACHING_EDIT': return state.editingId ? 'Edit Teaching Item' : 'Add Teaching Item';
+                case 'FAULTY_LIST': return 'Faulty / Repair';
+                case 'FAULTY_EDIT': return state.editingId ? 'Edit Faulty Report' : 'Add Faulty Report';
+                case 'WRITEOFF_LIST': return 'Asset Write Off';
+                case 'WRITEOFF_EDIT': return state.editingId ? 'Edit Write Off' : 'Add Write Off';
+                case 'LOGS': return 'Audit Logs';
                 case 'MORE': return 'More Options';
                 default: return 'Lab Inventory';
             }
@@ -150,24 +166,32 @@
             container.innerHTML = `
                 <div class="card text-center">
                     <h2>MULTI-LOCATION INVENTORY</h2>
-                    <p>Jumlah Lokasi Dikesan: <strong>${labs.length} Lokasi</strong></p>
+                    <p>Total Detected Locations: <strong>${labs.length} Locations</strong></p>
                 </div>
 
                 <div class="card">
-                    <label>📍 Pilihan Lokasi / Makmal Aktif:</label>
+                    <label>📍 Active Lab Location:</label>
                     <div class="row">
                         <select id="lab-select" onchange="onLabSwitched(this.value)" class="col">
-                            ${labs.length > 0 ? optionsHTML : '<option value="">-- Tiada Lokasi (Sila Upload Fail CSV/XLS) --</option>'}
+                            ${labs.length > 0 ? optionsHTML : '<option value="">-- No Lab Selected (Upload Excel/CSV) --</option>'}
                         </select>
-                        <button class="btn btn-green btn-inline" onclick="addLabPrompt()">＋ Tambah Lokasi</button>
+                        <button class="btn btn-green btn-inline" onclick="addLabPrompt()">＋ Add Lab</button>
+                        ${labs.length > 0 ? `<button class="btn btn-red btn-inline" onclick="deleteLabPrompt()">🗑</button>` : ''}
                     </div>
                 </div>
 
-                <!-- UPLOAD DI ATAS, EXPORT DI BAWAH -->
+                <!-- UPLOAD BUTTON AT TOP -->
+                <div class="card">
+                    <button class="btn btn-purple" style="margin-top:0;" onclick="triggerImport()">📂 Upload Excel / CSV File (Auto-Detect Lab)</button>
+                </div>
+
+                <!-- ALL 4 MAIN CATEGORY BUTTONS RESTORED -->
                 <div>
-                    <button class="btn btn-purple" onclick="triggerImport()">📂 Upload Fail Excel / CSV (Auto-Detect Lokasi)</button>
-                    <button class="btn btn-green" onclick="switchScreen('EQUIPMENT_LIST')">⚙ Senarai Peralatan & Pindahan Lokasi</button>
-                    <button class="btn btn-blue" onclick="switchScreen('LOGS')">📜 Papar Rekod Perubahan (Audit Log)</button>
+                    <button class="btn btn-green" onclick="switchScreen('EQUIPMENT_LIST')">⚙ Equipment List</button>
+                    <button class="btn btn-purple" onclick="switchScreen('TEACHING_LIST')">📚 Teaching Materials</button>
+                    <button class="btn btn-orange" onclick="switchScreen('FAULTY_LIST')">🔧 Faulty / Repair</button>
+                    <button class="btn btn-red" onclick="switchScreen('WRITEOFF_LIST')">🗑 Asset to Write Off</button>
+                    <button class="btn btn-blue" onclick="switchScreen('LOGS')">📜 View Change Logs (Audit Trail)</button>
                 </div>
             `;
         }
@@ -179,48 +203,80 @@
         }
 
         function addLabPrompt() {
-            let name = prompt("Masukkan Nama Lokasi / Makmal Baharu:");
+            let name = prompt("Enter New Lab Location Name (e.g. P103, N101, SE008):");
             if (name && name.trim()) {
                 name = name.trim();
                 if (!labProfiles[name]) {
                     labProfiles[name] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                     state.currentLab = name;
-                    logChange(name, 'Lokasi', 'DITAMBAH', `Mencipta lokasi/makmal baharu: ${name}`);
+                    logChange(name, 'Location', 'ADDED', `Created new lab location: ${name}`);
                     saveData();
                     render();
-                } else alert("Lokasi ini telah wujud!");
+                } else alert("This lab location already exists!");
             }
         }
 
+        function deleteLabPrompt() {
+            if (!state.currentLab) return;
+            if (confirm(`Are you sure you want to delete lab location '${state.currentLab}' and all its records?`)) {
+                logChange(state.currentLab, 'Location', 'DELETED', `Deleted lab location: ${state.currentLab}`);
+                delete labProfiles[state.currentLab];
+                let keys = Object.keys(labProfiles);
+                state.currentLab = keys.length > 0 ? keys[0] : '';
+                saveData();
+                render();
+            }
+        }
+
+        function renderSearchBar(container, placeholder, onFilter) {
+            let searchDiv = document.createElement('div');
+            searchDiv.innerHTML = `<input type="text" placeholder="🔍 ${placeholder}" value="${state.searchQuery}">`;
+            container.appendChild(searchDiv);
+            searchDiv.querySelector('input').addEventListener('input', function(e) {
+                state.searchQuery = e.target.value;
+                onFilter();
+            });
+        }
+
+        /* --- 1. EQUIPMENT SECTION --- */
         function renderEquipmentList(container) {
             if (!state.currentLab || !labProfiles[state.currentLab]) {
-                container.innerHTML = `<div class="card text-center"><p>Sila pilih atau cipta lokasi terlebih dahulu.</p></div>`;
+                container.innerHTML = `<div class="card text-center"><p>Please select or create a lab location first.</p></div>`;
                 return;
             }
+
+            renderSearchBar(container, "Search Equipment Name / Code...", filterEquipmentUI);
 
             let listDiv = document.createElement('div');
             listDiv.id = 'items-list-container';
             container.appendChild(listDiv);
+            filterEquipmentUI();
 
-            let items = labProfiles[state.currentLab].equipmentList;
+            let addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-green';
+            addBtn.innerText = '＋ Add New Equipment';
+            addBtn.onclick = () => switchScreen('EQUIPMENT_EDIT', null);
+            container.appendChild(addBtn);
+        }
+
+        function filterEquipmentUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv || !labProfiles[state.currentLab]) return;
+            let q = state.searchQuery.toLowerCase();
+            let items = labProfiles[state.currentLab].equipmentList.filter(i => !q || i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
+
             listDiv.innerHTML = '';
             if (items.length === 0) {
-                listDiv.innerHTML = `<div class="card"><p>Tiada peralatan disimpan di lokasi ini.</p></div>`;
+                listDiv.innerHTML = `<div class="card"><p>No equipment found in this lab location.</p></div>`;
             } else {
                 items.forEach(item => {
                     let card = document.createElement('div');
                     card.className = 'item-card';
-                    card.innerHTML = `<h2>${item.name}</h2><p>Kod Stok: ${item.code}</p>`;
+                    card.innerHTML = `<h2>${item.name}</h2><p>Stock Code: ${item.code}</p>`;
                     card.onclick = () => switchScreen('EQUIPMENT_EDIT', item.code);
                     listDiv.appendChild(card);
                 });
             }
-
-            let addBtn = document.createElement('button');
-            addBtn.className = 'btn btn-green';
-            addBtn.innerText = '＋ Tambah Peralatan Baharu';
-            addBtn.onclick = () => switchScreen('EQUIPMENT_EDIT', null);
-            container.appendChild(addBtn);
         }
 
         function renderEquipmentEdit(container) {
@@ -229,17 +285,17 @@
 
             container.innerHTML = `
                 <div class="card">
-                    <label>📦 Kod Peralatan / Stock Code:</label>
+                    <label>📦 Stock Code / Equipment Code:</label>
                     <input type="text" id="eq-code" value="${item ? item.code : ''}">
                     
-                    <label>⚙ Nama Peralatan:</label>
+                    <label>⚙ Equipment Name:</label>
                     <input type="text" id="eq-name" value="${item ? item.name : ''}">
 
-                    <label>📍 Pindah ke Lokasi Mana-Mana (Merentas Sistem):</label>
+                    <label>📍 Lab Location (Select to Transfer):</label>
                     <select id="eq-target-lab">${labOptions}</select>
 
-                    <button class="btn btn-green" onclick="saveEquipment()">💾 Simpan / Pindah Peralatan</button>
-                    ${item ? `<button class="btn btn-red" onclick="deleteEquipment('${item.code}')">❌ Padam Peralatan</button>` : ''}
+                    <button class="btn btn-green" onclick="saveEquipment()">💾 Save / Transfer Equipment</button>
+                    ${item ? `<button class="btn btn-red" onclick="deleteEquipment('${item.code}')">❌ Delete Equipment</button>` : ''}
                 </div>
             `;
         }
@@ -249,7 +305,7 @@
             let name = document.getElementById('eq-name').value.trim();
             let targetLab = document.getElementById('eq-target-lab').value;
 
-            if (!code || !name) { alert("Sila isi Kod dan Nama Peralatan!"); return; }
+            if (!code || !name) { alert("Please enter Code and Equipment Name!"); return; }
 
             if (!labProfiles[targetLab]) {
                 labProfiles[targetLab] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
@@ -265,13 +321,13 @@
                 targetList.push({ code, name });
 
                 if (state.currentLab !== targetLab) {
-                    logChange(`${state.currentLab} → ${targetLab}`, 'Equipment List', 'DIPINDAHKAN', `Peralatan "${name}" (${code}) dipindahkan dari ${state.currentLab} ke ${targetLab}`);
+                    logChange(`${state.currentLab} → ${targetLab}`, 'Equipment List', 'MOVED', `Equipment "${name}" (${code}) moved from ${state.currentLab} to ${targetLab}`);
                 } else {
-                    logChange(state.currentLab, 'Equipment List', 'DIKEMAS KINI', `Mengemas kini maklumat peralatan "${name}" (${code})`);
+                    logChange(state.currentLab, 'Equipment List', 'UPDATED', `Updated equipment details: "${name}" (${code})`);
                 }
             } else {
                 targetList.push({ code, name });
-                logChange(targetLab, 'Equipment List', 'DITAMBAH', `Menambah peralatan baharu: "${name}" (${code})`);
+                logChange(targetLab, 'Equipment List', 'ADDED', `Added new equipment: "${name}" (${code})`);
             }
 
             saveData();
@@ -280,35 +336,323 @@
 
         function deleteEquipment(code) {
             let item = labProfiles[state.currentLab].equipmentList.find(i => i.code === code);
-            if (confirm(`Adakah anda pasti mahu memadam peralatan "${item.name}"?`)) {
+            if (confirm(`Are you sure you want to delete equipment "${item.name}"?`)) {
                 labProfiles[state.currentLab].equipmentList = labProfiles[state.currentLab].equipmentList.filter(i => i.code !== code);
-                logChange(state.currentLab, 'Equipment List', 'DIBUANG', `Memadam peralatan: "${item.name}" (${code})`);
+                logChange(state.currentLab, 'Equipment List', 'DELETED', `Deleted equipment: "${item.name}" (${code})`);
                 saveData();
                 goBack();
             }
         }
 
+        /* --- 2. TEACHING MATERIALS SECTION --- */
+        function renderTeachingList(container) {
+            if (!state.currentLab || !labProfiles[state.currentLab]) {
+                container.innerHTML = `<div class="card text-center"><p>Please select or create a lab location first.</p></div>`;
+                return;
+            }
+
+            renderSearchBar(container, "Search Teaching Material Name...", filterTeachingUI);
+
+            let listDiv = document.createElement('div');
+            listDiv.id = 'items-list-container';
+            container.appendChild(listDiv);
+            filterTeachingUI();
+
+            let addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-purple';
+            addBtn.innerText = '＋ Add Teaching Material Order';
+            addBtn.onclick = () => switchScreen('TEACHING_EDIT', null);
+            container.appendChild(addBtn);
+        }
+
+        function filterTeachingUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv || !labProfiles[state.currentLab]) return;
+            let q = state.searchQuery.toLowerCase();
+            let items = labProfiles[state.currentLab].teachingList.filter(i => !q || i.name.toLowerCase().includes(q));
+
+            listDiv.innerHTML = '';
+            if (items.length === 0) {
+                listDiv.innerHTML = `<div class="card"><p>No teaching materials found in this lab location.</p></div>`;
+            } else {
+                items.forEach(item => {
+                    let card = document.createElement('div');
+                    card.className = 'item-card';
+                    card.innerHTML = `<h2>${item.name}</h2><p>Qty: ${item.qtyUnit} ${item.remarks ? '| ' + item.remarks : ''}</p>`;
+                    card.onclick = () => switchScreen('TEACHING_EDIT', item.id);
+                    listDiv.appendChild(card);
+                });
+            }
+        }
+
+        function renderTeachingEdit(container) {
+            let item = labProfiles[state.currentLab] ? labProfiles[state.currentLab].teachingList.find(i => i.id === state.editingId) : null;
+            container.innerHTML = `
+                <div class="card">
+                    <label>📚 Teaching Material Item Name:</label>
+                    <input type="text" id="tm-name" value="${item ? item.name : ''}">
+                    <label>🔢 Quantity / Unit:</label>
+                    <input type="text" id="tm-qty" value="${item ? item.qtyUnit : ''}">
+                    <label>📝 Additional Remarks:</label>
+                    <input type="text" id="tm-remarks" value="${item && item.remarks ? item.remarks : ''}">
+                    <button class="btn btn-green" onclick="saveTeaching()">💾 Save Order Item</button>
+                    ${item ? `<button class="btn btn-red" onclick="deleteTeaching('${item.id}')">❌ Delete Item</button>` : ''}
+                </div>
+            `;
+        }
+
+        function saveTeaching() {
+            let name = document.getElementById('tm-name').value.trim();
+            let qtyUnit = document.getElementById('tm-qty').value.trim();
+            let remarks = document.getElementById('tm-remarks').value.trim();
+            if (!name || !qtyUnit) { alert("Please enter Name and Quantity!"); return; }
+
+            let list = labProfiles[state.currentLab].teachingList;
+            if (state.editingId) {
+                let item = list.find(i => i.id === state.editingId);
+                if (item) {
+                    item.name = name; item.qtyUnit = qtyUnit; item.remarks = remarks;
+                    logChange(state.currentLab, 'Teaching Materials', 'UPDATED', `Updated teaching item: "${name}" (${qtyUnit})`);
+                }
+            } else {
+                list.push({ id: 'TM-' + Date.now(), name, qtyUnit, remarks });
+                logChange(state.currentLab, 'Teaching Materials', 'ADDED', `Added teaching item: "${name}" (${qtyUnit})`);
+            }
+            saveData();
+            goBack();
+        }
+
+        function deleteTeaching(id) {
+            let item = labProfiles[state.currentLab].teachingList.find(i => i.id === id);
+            if (confirm(`Are you sure you want to delete teaching item "${item.name}"?`)) {
+                labProfiles[state.currentLab].teachingList = labProfiles[state.currentLab].teachingList.filter(i => i.id !== id);
+                logChange(state.currentLab, 'Teaching Materials', 'DELETED', `Deleted teaching item: "${item.name}"`);
+                saveData();
+                goBack();
+            }
+        }
+
+        /* --- 3. FAULTY / REPAIR SECTION --- */
+        function renderFaultyList(container) {
+            if (!state.currentLab || !labProfiles[state.currentLab]) {
+                container.innerHTML = `<div class="card text-center"><p>Please select or create a lab location first.</p></div>`;
+                return;
+            }
+
+            renderSearchBar(container, "Search Faulty Asset Name...", filterFaultyUI);
+
+            let listDiv = document.createElement('div');
+            listDiv.id = 'items-list-container';
+            container.appendChild(listDiv);
+            filterFaultyUI();
+
+            let addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-orange';
+            addBtn.innerText = '＋ Add Faulty Report';
+            addBtn.onclick = () => switchScreen('FAULTY_EDIT', null);
+            container.appendChild(addBtn);
+        }
+
+        function filterFaultyUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv || !labProfiles[state.currentLab]) return;
+            let q = state.searchQuery.toLowerCase();
+            let items = labProfiles[state.currentLab].faultyList.filter(i => !q || i.name.toLowerCase().includes(q) || (i.stockCode && i.stockCode.toLowerCase().includes(q)));
+
+            listDiv.innerHTML = '';
+            if (items.length === 0) {
+                listDiv.innerHTML = `<div class="card"><p>No faulty reports found in this lab location.</p></div>`;
+            } else {
+                items.forEach(item => {
+                    let card = document.createElement('div');
+                    card.className = 'item-card';
+                    card.innerHTML = `<h2>${item.name}</h2><p>Problem: ${item.problem} | Status: ${item.status || 'Pending Repair'}</p>`;
+                    card.onclick = () => switchScreen('FAULTY_EDIT', item.id);
+                    listDiv.appendChild(card);
+                });
+            }
+        }
+
+        function renderFaultyEdit(container) {
+            let item = labProfiles[state.currentLab] ? labProfiles[state.currentLab].faultyList.find(i => i.id === state.editingId) : null;
+            let statuses = ["Pending Repair", "Repaired", "Returned"];
+            let statusOpts = statuses.map(s => `<option value="${s}" ${item && item.status === s ? 'selected' : ''}>${s}</option>`).join('');
+
+            container.innerHTML = `
+                <div class="card">
+                    <label>📦 Stock Code / Equipment Code:</label>
+                    <input type="text" id="f-code" value="${item && item.stockCode ? item.stockCode : ''}">
+                    <label>⚙ Equipment Name:</label>
+                    <input type="text" id="f-name" value="${item ? item.name : ''}">
+                    <label>🔧 Problem Description:</label>
+                    <input type="text" id="f-problem" value="${item ? item.problem : ''}">
+                    <label>📅 Reported Date:</label>
+                    <input type="date" id="f-date" value="${item && item.date ? item.date : new Date().toISOString().split('T')[0]}">
+                    <label>📌 Repair Status:</label>
+                    <select id="f-status">${statusOpts}</select>
+                    <label>📝 Repair Notes / Remarks:</label>
+                    <input type="text" id="f-remarks" value="${item && item.remarks ? item.remarks : ''}">
+                    <button class="btn btn-green" onclick="saveFaulty()">💾 Save Faulty Report</button>
+                    ${item ? `<button class="btn btn-red" onclick="deleteFaulty('${item.id}')">❌ Delete Report</button>` : ''}
+                </div>
+            `;
+        }
+
+        function saveFaulty() {
+            let stockCode = document.getElementById('f-code').value.trim();
+            let name = document.getElementById('f-name').value.trim();
+            let problem = document.getElementById('f-problem').value.trim();
+            let date = document.getElementById('f-date').value;
+            let status = document.getElementById('f-status').value;
+            let remarks = document.getElementById('f-remarks').value.trim();
+
+            if (!name) { alert("Please enter Equipment Name!"); return; }
+
+            let list = labProfiles[state.currentLab].faultyList;
+            if (state.editingId) {
+                let item = list.find(i => i.id === state.editingId);
+                if (item) {
+                    Object.assign(item, { stockCode, name, problem, date, status, remarks });
+                    logChange(state.currentLab, 'Faulty Report', 'UPDATED', `Updated faulty report for "${name}" (${status})`);
+                }
+            } else {
+                list.push({ id: 'F-' + (list.length + 1), stockCode, name, problem, date, status, remarks });
+                logChange(state.currentLab, 'Faulty Report', 'ADDED', `Created faulty report for "${name}" (${problem})`);
+            }
+            saveData();
+            goBack();
+        }
+
+        function deleteFaulty(id) {
+            let item = labProfiles[state.currentLab].faultyList.find(i => i.id === id);
+            if (confirm(`Are you sure you want to delete faulty report for "${item.name}"?`)) {
+                labProfiles[state.currentLab].faultyList = labProfiles[state.currentLab].faultyList.filter(i => i.id !== id);
+                logChange(state.currentLab, 'Faulty Report', 'DELETED', `Deleted faulty report for "${item.name}"`);
+                saveData();
+                goBack();
+            }
+        }
+
+        /* --- 4. ASSET WRITE OFF SECTION --- */
+        function renderWriteOffList(container) {
+            if (!state.currentLab || !labProfiles[state.currentLab]) {
+                container.innerHTML = `<div class="card text-center"><p>Please select or create a lab location first.</p></div>`;
+                return;
+            }
+
+            renderSearchBar(container, "Search Write Off Asset Name...", filterWriteOffUI);
+
+            let listDiv = document.createElement('div');
+            listDiv.id = 'items-list-container';
+            container.appendChild(listDiv);
+            filterWriteOffUI();
+
+            let addBtn = document.createElement('button');
+            addBtn.className = 'btn btn-red';
+            addBtn.innerText = '＋ Add Write Off Proposal';
+            addBtn.onclick = () => switchScreen('WRITEOFF_EDIT', null);
+            container.appendChild(addBtn);
+        }
+
+        function filterWriteOffUI() {
+            let listDiv = document.getElementById('items-list-container');
+            if (!listDiv || !labProfiles[state.currentLab]) return;
+            let q = state.searchQuery.toLowerCase();
+            let items = labProfiles[state.currentLab].writeOffList.filter(i => !q || i.name.toLowerCase().includes(q) || i.code.toLowerCase().includes(q));
+
+            listDiv.innerHTML = '';
+            if (items.length === 0) {
+                listDiv.innerHTML = `<div class="card"><p>No write-off proposals found in this lab location.</p></div>`;
+            } else {
+                items.forEach(item => {
+                    let card = document.createElement('div');
+                    card.className = 'item-card';
+                    card.innerHTML = `2>${item.name}</h2><p>Reason: ${item.reason} | Status: ${item.status || 'Pending'}</p>`;
+                    card.onclick = () => switchScreen('WRITEOFF_EDIT', item.code);
+                    listDiv.appendChild(card);
+                });
+            }
+        }
+
+        function renderWriteOffEdit(container) {
+            let item = labProfiles[state.currentLab] ? labProfiles[state.currentLab].writeOffList.find(i => i.code === state.editingId) : null;
+            let statuses = ["Pending", "Approved", "Not Approved"];
+            let statusOpts = statuses.map(s => `<option value="${s}" ${item && item.status === s ? 'selected' : ''}>${s}</option>`).join('');
+
+            container.innerHTML = `
+                <div class="card">
+                    <label>📦 Stock Code / Asset Code:</label>
+                    <input type="text" id="w-code" value="${item ? item.code : ''}">
+                    <label>⚙ Equipment / Asset Name:</label>
+                    <input type="text" id="w-name" value="${item ? item.name : ''}">
+                    <label>🗑 Reason for Write Off:</label>
+                    <input type="text" id="w-reason" value="${item ? item.reason : ''}">
+                    <label>📌 Status:</label>
+                    <select id="w-status">${statusOpts}</select>
+                    <label>📝 Additional Remarks / Notes:</label>
+                    <input type="text" id="w-remarks" value="${item && item.remarks ? item.remarks : ''}">
+                    <button class="btn btn-green" onclick="saveWriteOff()">💾 Save Write Off Proposal</button>
+                    ${item ? `<button class="btn btn-red" onclick="deleteWriteOff('${item.code}')">❌ Delete Proposal</button>` : ''}
+                </div>
+            `;
+        }
+
+        function saveWriteOff() {
+            let code = document.getElementById('w-code').value.trim();
+            let name = document.getElementById('w-name').value.trim();
+            let reason = document.getElementById('w-reason').value.trim();
+            let status = document.getElementById('w-status').value;
+            let remarks = document.getElementById('w-remarks').value.trim();
+
+            if (!code || !name) { alert("Please enter Asset Code and Name!"); return; }
+
+            let list = labProfiles[state.currentLab].writeOffList;
+            if (state.editingId) {
+                let item = list.find(i => i.code === state.editingId);
+                if (item) {
+                    Object.assign(item, { code, name, reason, status, remarks });
+                    logChange(state.currentLab, 'Asset Write Off', 'UPDATED', `Updated write off proposal for "${name}" (${status})`);
+                }
+            } else {
+                list.push({ code, name, reason, status, remarks });
+                logChange(state.currentLab, 'Asset Write Off', 'ADDED', `Created write off proposal for "${name}" (${reason})`);
+            }
+            saveData();
+            goBack();
+        }
+
+        function deleteWriteOff(code) {
+            let item = labProfiles[state.currentLab].writeOffList.find(i => i.code === code);
+            if (confirm(`Are you sure you want to delete write off proposal for "${item.name}"?`)) {
+                labProfiles[state.currentLab].writeOffList = labProfiles[state.currentLab].writeOffList.filter(i => i.code !== code);
+                logChange(state.currentLab, 'Asset Write Off', 'DELETED', `Deleted write off proposal for "${item.name}"`);
+                saveData();
+                goBack();
+            }
+        }
+
+        /* --- AUDIT LOG DISPLAY & CSV EXPORT --- */
         function renderLogs(container) {
             container.innerHTML = `
                 <div class="card">
-                    <h2>Eksport Fail CSV Change Log</h2>
-                    <p style="margin-bottom:10px;">Format CSV bersih untuk dibuka di Excel. Mencatat pergerakan bagi **semua lokasi** tanpa had.</p>
-                    <button class="btn btn-green" onclick="exportLogsCSV()">📊 Download CSV Change Log</button>
+                    <h2>Export CSV Change Log</h2>
+                    <p style="margin-bottom:10px;">Download complete history of all changes across all lab locations in CSV format.</p>
+                    <button class="btn btn-green" onclick="exportLogsCSV()">📊 Download CSV Audit Log</button>
                 </div>
             `;
 
             let logsCard = document.createElement('div');
             logsCard.className = 'card';
-            logsCard.innerHTML = `<h2>Senarai Perubahan Terkini</h2>`;
+            logsCard.innerHTML = `<h2>Recent Activity History</h2>`;
 
             if (changeLogs.length === 0) {
-                logsCard.innerHTML += `<p>Tiada sebarang rekod perubahan disimpan lagi.</p>`;
+                logsCard.innerHTML += `<p>No activity logs recorded yet.</p>`;
             } else {
                 changeLogs.forEach(log => {
                     let tagClass = 'tag-update';
-                    if (log.actionType === 'DITAMBAH') tagClass = 'tag-add';
-                    if (log.actionType === 'DIPINDAHKAN') tagClass = 'tag-transfer';
-                    if (log.actionType === 'DIBUANG') tagClass = 'tag-delete';
+                    if (log.actionType === 'ADDED') tagClass = 'tag-add';
+                    if (log.actionType === 'MOVED') tagClass = 'tag-transfer';
+                    if (log.actionType === 'DELETED') tagClass = 'tag-delete';
 
                     let item = document.createElement('div');
                     item.style.borderBottom = "1px solid #ccc";
@@ -318,7 +662,7 @@
                             <span class="log-tag ${tagClass}">${log.actionType}</span>
                             <span style="font-size:11px; color:#666;">${log.timestamp}</span>
                         </div>
-                        <p><strong>Lokasi Terlibat:</strong> ${log.location} | <strong>Kategori:</strong> ${log.category}</p>
+                        <p><strong>Location:</strong> ${log.location} | <strong>Category:</strong> ${log.category}</p>
                         <p style="color:#222; margin-top:2px;">${log.remarks}</p>
                     `;
                     logsCard.appendChild(item);
@@ -329,12 +673,12 @@
 
         function exportLogsCSV() {
             if (changeLogs.length === 0) {
-                alert("Tiada rekod perubahan untuk dieksport!");
+                alert("No activity logs available to export!");
                 return;
             }
 
             let csvRows = [];
-            csvRows.push(["No.", "Timestamp", "Lokasi / Makmal Terlibat", "Kategori / Modul", "Jenis Perubahan", "Maklumat & Detail Perubahan (Remarks)"]);
+            csvRows.push(["No.", "Timestamp", "Lab Location", "Category", "Action Type", "Details / Remarks"]);
 
             changeLogs.forEach((log, index) => {
                 csvRows.push([
@@ -351,7 +695,7 @@
             let encodedUri = encodeURI(csvContent);
             let link = document.createElement("a");
             link.setAttribute("href", encodedUri);
-            link.setAttribute("download", `Universal_Inventory_Change_Log_${new Date().toISOString().slice(0,10)}.csv`);
+            link.setAttribute("download", `Lab_Inventory_Audit_Log_${new Date().toISOString().slice(0,10)}.csv`);
             document.body.appendChild(link);
             link.click();
             document.body.removeChild(link);
@@ -361,7 +705,7 @@
             document.getElementById('file-input-excel').click();
         }
 
-        /* --- FUNGSI PROSES FAIL EXCEL (.XLS, .XLSX, .CSV) MENGGUNAKAN SHEETJS --- */
+        /* --- SMART EXCEL / CSV PARSING FUNCTION --- */
         function handleExcelImport(e) {
             let file = e.target.files[0];
             if (!file) return;
@@ -372,45 +716,125 @@
                     let data = new Uint8Array(evt.target.result);
                     let workbook = XLSX.read(data, { type: 'array' });
 
-                    let newLocationsFound = 0;
                     let itemsImported = 0;
+                    let currentSection = "EQUIPMENT";
 
-                    // Mengimbas setiap Helaian (Sheet) dalam fail Excel
                     workbook.SheetNames.forEach(sheetName => {
                         let worksheet = workbook.Sheets[sheetName];
-                        let rows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                        let defaultSheetLab = sheetName.trim();
+                        let isGenericSheet = /^sheet\s*\d+$/i.test(defaultSheetLab) \vert{}\vert{} /^table\s*\d+$/i.test(defaultSheetLab);
 
-                        rows.forEach((cols, index) => {
-                            if (index === 0 || !cols || cols.length < 3) return; // Abaikan tajuk / baris kosong
+                        let jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1, defval: "" });
+                        
+                        let detectedLabMeta = "";
+                        jsonRows.forEach(row => {
+                            if (row && row.length > 0) {
+                                let str = row.join(" ");
+                                let match = str.match(/Lab\s*Location\s*[:\t,]\s*["']?([^"',\n\r]+)["']?/i);
+                                if (match && match[1]) detectedLabMeta = match[1].trim();
+                            }
+                        });
 
-                            let labName = String(cols[0]).trim(); // Lajur A = Nama Lokasi
-                            let code = String(cols[1]).trim();    // Lajur B = Kod Stok
-                            let name = String(cols[2]).trim();    // Lajur C = Nama Peralatan
+                        jsonRows.forEach((row, index) => {
+                            if (!row || row.length === 0) return;
 
-                            if (!labName || labName === 'undefined') return;
+                            let lineStr = row.join(" ").trim();
+                            if (!lineStr) return;
 
-                            if (!labProfiles[labName]) {
-                                labProfiles[labName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
-                                newLocationsFound++;
+                            if (lineStr.includes("SECTION 1: EQUIPMENT LIST") || lineStr.includes("EQUIPMENT LIST")) { currentSection = "EQUIPMENT"; return; }
+                            if (lineStr.includes("SECTION 2: TEACHING MATERIALS ORDER") || lineStr.includes("TEACHING MATERIALS")) { currentSection = "TEACHING"; return; }
+                            if (lineStr.includes("SECTION 3: FAULTY / REPAIR REPORTS") || lineStr.includes("FAULTY / REPAIR") || lineStr.includes("FAULTY REPORTS")) { currentSection = "FAULTY"; return; }
+                            if (lineStr.includes("SECTION 4: ASSET WRITE OFF PROPOSALS") || lineStr.includes("WRITE OFF")) { currentSection = "WRITEOFF"; return; }
+
+                            if (lineStr.startsWith("No.,") || lineStr.startsWith("No ") || lineStr.startsWith("Lab Location") || lineStr.startsWith("Generated Date") || lineStr.startsWith("----")) return;
+
+                            let col0 = String(row[0] || "").trim();
+                            let col1 = String(row[1] || "").trim();
+                            let col2 = String(row[2] || "").trim();
+
+                            // Determine actual Lab Name (never use row numbers 1, 2, 3...)
+                            let rowLabName = "";
+                            if (col0 && !/^\d+$/.test(col0) && col0.toLowerCase() !== 'no' && col0.toLowerCase() !== 'no.' && col0.toLowerCase() !== 'equipment code') {
+                                rowLabName = col0;
+                            } else if (detectedLabMeta) {
+                                rowLabName = detectedLabMeta;
+                            } else if (!isGenericSheet) {
+                                rowLabName = defaultSheetLab;
+                            } else {
+                                rowLabName = state.currentLab || "Main Lab";
                             }
 
-                            if (!labProfiles[labName].equipmentList.some(i => i.code === code)) {
-                                labProfiles[labName].equipmentList.push({ code, name });
-                                itemsImported++;
+                            rowLabName = rowLabName.replace(/^"|"$/g, '').trim();
+
+                            if (!labProfiles[rowLabName]) {
+                                labProfiles[rowLabName] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
+                            }
+
+                            let profile = labProfiles[rowLabName];
+
+                            if (col0.includes("No Equipment") || col1.includes("No Equipment") || col0.includes("No Teaching") || col0.includes("No Faulty") || col0.includes("No Asset Write Off")) return;
+
+                            if (currentSection === "EQUIPMENT") {
+                                let code = /^\d+$/.test(col0) ? col1 : col0;
+                                let name = /^\d+$/.test(col0) ? col2 : col1;
+
+                                if (code && name && code.toLowerCase() !== 'equipment code' && code.toLowerCase() !== 'code') {
+                                    if (!profile.equipmentList.some(i => i.code.toLowerCase() === code.toLowerCase())) {
+                                        profile.equipmentList.push({ code, name });
+                                        itemsImported++;
+                                    }
+                                }
+                            } else if (currentSection === "TEACHING") {
+                                let name = /^\d+$/.test(col0) ? col1 : col0;
+                                let qtyUnit = /^\d+$/.test(col0) ? col2 : col1;
+                                let remarks = /^\d+$/.test(col0) ? String(row[3]||'').trim() : col2;
+
+                                if (name && name.toLowerCase() !== 'item name') {
+                                    profile.teachingList.push({ id: 'TM-' + Date.now() + '-' + Math.random().toString(36).substr(2, 4), name, qtyUnit, remarks });
+                                    itemsImported++;
+                                }
+                            } else if (currentSection === "FAULTY") {
+                                let id = /^\d+$/.test(col0) ? col1 : col0;
+                                let stockCode = String(row[1]||'').trim();
+                                let name = String(row[2]||'').trim();
+                                let problem = String(row[3]||'').trim();
+                                let date = String(row[4]||'').trim();
+                                let status = String(row[5]||'Pending Repair').trim();
+                                let remarks = String(row[6]||'').trim();
+
+                                if (name && name.toLowerCase() !== 'asset name') {
+                                    profile.faultyList.push({ id: id || ('F-' + Date.now()), stockCode, name, problem, date, status, remarks });
+                                    itemsImported++;
+                                }
+                            } else if (currentSection === "WRITEOFF") {
+                                let code = col0;
+                                let name = col1;
+                                let reason = col2;
+                                let status = String(row[3]||'Pending').trim();
+                                let remarks = String(row[4]||'').trim();
+
+                                if (code && name && code.toLowerCase() !== 'asset code') {
+                                    if (!profile.writeOffList.some(i => i.code.toLowerCase() === code.toLowerCase())) {
+                                        profile.writeOffList.push({ code, name, reason, status, remarks });
+                                        itemsImported++;
+                                    }
+                                }
                             }
                         });
                     });
 
                     let keys = Object.keys(labProfiles);
-                    if (keys.length > 0 && !state.currentLab) state.currentLab = keys[0];
+                    if (keys.length > 0 && (!state.currentLab || !labProfiles[state.currentLab])) {
+                        state.currentLab = keys[0];
+                    }
 
-                    logChange('MULTI-LOCATION', 'Import File', 'DITAMBAH', `Berjaya mengimport ${itemsImported} rekod dari fail "${file.name}".`);
+                    logChange('MULTI-LOCATION', 'Import File', 'ADDED', `Imported ${itemsImported} record(s) from "${file.name}".`);
                     saveData();
-                    alert(`Berjaya! ${itemsImported} item diimport dari fail Excel/CSV.`);
+                    alert(`Success! Imported ${itemsImported} record(s) across ${keys.length} lab location(s).`);
                     render();
 
                 } catch (err) {
-                    alert("Ralat semasa membaca fail! Pastikan fail tidak rosak.");
+                    alert("Error reading file! Please ensure it is a valid Excel (.xls, .xlsx) or CSV file.");
                     console.error(err);
                 }
             };
@@ -418,17 +842,12 @@
             e.target.value = '';
         }
 
-        /* --- SUSUNAN LETAK: UPLOAD DI ATAS, EXPORT DI BAWAH --- */
         function renderMore(container) {
             container.innerHTML = `
                 <div class="card">
-                    <h2>Pengurusan Sistem Universal</h2>
-                    
-                    <!-- UPLOAD DI ATAS -->
-                    <button class="btn btn-purple" onclick="triggerImport()">📂 Upload Fail Excel / CSV (Auto-Detect Lokasi)</button>
-                    
-                    <!-- EXPORT DI BAWAH -->
-                    <button class="btn btn-green" onclick="exportLogsCSV()">📊 Export CSV Change Log (Semua Lokasi)</button>
+                    <h2>System Management Options</h2>
+                    <button class="btn btn-purple" onclick="triggerImport()">📂 Upload Excel / CSV File (Auto-Detect Lab)</button>
+                    <button class="btn btn-green" onclick="exportLogsCSV()">📊 Download CSV Audit Log</button>
                 </div>
             `;
         }
