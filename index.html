@@ -151,40 +151,32 @@
             screenStack: ['HOME']
         };
 
-        let labProfiles = JSON.parse(localStorage.getItem('labProfiles')) || {};
-        let activityLogs = JSON.parse(localStorage.getItem('activityLogs')) || [];
-        let csvAuditLogs = JSON.parse(localStorage.getItem('csvAuditLogs')) || [];
+        // AUTO-RESET CACHE: Data strictly in sessionStorage (cleared on refresh or tab close)
+        let labProfiles = JSON.parse(sessionStorage.getItem('labProfiles')) || {};
+        let activityLogs = JSON.parse(sessionStorage.getItem('activityLogs')) || [];
+        let csvAuditLogs = JSON.parse(sessionStorage.getItem('csvAuditLogs')) || [];
 
-        // STRICT VALID LOCATION NAME CHECKER
-        function isValidLocationName(name) {
-            if (!name) return false;
-            let trimmed = String(name).trim();
-            if (!trimmed) return false;
-
-            // Discard pure numbers, roman numerals or section header patterns like "17 (iii)", "6 (i)", "26 (ii)"
+        // STRICT FILTER FOR TAB NAMES ONLY (e.g. N101A, N101B, N102, P103, P104, SE008, SE009)
+        function isValidSheetLocationName(sheetName) {
+            if (!sheetName) return false;
+            let trimmed = String(sheetName).trim().toUpperCase();
             if (/^\d+(\s*\([ivx\d]+\))?$/i.test(trimmed)) return false;
-            if (/^[ivx\d]+\s*\([ivx\d]+\)$/i.test(trimmed)) return false;
+            if (trimmed.length > 10 || trimmed.includes(" ") || trimmed.includes("(")) return false;
 
-            let lower = trimmed.toLowerCase();
-
-            // Discard non-location sheet titles and system keywords
-            const invalidKeywords = [
-                "system", "se009_default", "written off", "written-off", 
-                "research grant (farming)", "research grant", "farming",
-                "equipment list", "teaching materials", "faulty report", 
-                "faulty / repair", "asset write off", "general & import", 
-                "general", "location", "category", "action type", "timestamp", "no", "no."
+            const invalidSheetNames = [
+                "SYSTEM", "EQUIPMENT", "TEACHING", "FAULTY", "WRITEOFF", 
+                "GENERAL", "SHEET", "SUMMARY", "TOTAL", "LOCATION"
             ];
+            if (invalidSheetNames.includes(trimmed)) return false;
 
-            if (invalidKeywords.includes(lower)) return false; 
-            return true;
+            return /^[A-Z]{1,3}\d{3}[A-Z]?$/i.test(trimmed);
         }
 
         function cleanInvalidLocations() {
             let keys = Object.keys(labProfiles);
             let updated = false;
             keys.forEach(k => {
-                if (!isValidLocationName(k)) {
+                if (!isValidSheetLocationName(k)) {
                     delete labProfiles[k];
                     updated = true;
                 }
@@ -193,21 +185,21 @@
         }
 
         cleanInvalidLocations();
-        let labKeys = Object.keys(labProfiles).filter(isValidLocationName);
-        state.currentLab = localStorage.getItem('currentLab');
-        if (!isValidLocationName(state.currentLab)) {
+        let labKeys = Object.keys(labProfiles).filter(isValidSheetLocationName);
+        state.currentLab = sessionStorage.getItem('currentLab');
+        if (!isValidSheetLocationName(state.currentLab)) {
             state.currentLab = labKeys.length > 0 ? labKeys[0] : '';
         }
 
         function saveData() {
             cleanInvalidLocations();
-            localStorage.setItem('labProfiles', JSON.stringify(labProfiles));
-            localStorage.setItem('activityLogs', JSON.stringify(activityLogs));
-            localStorage.setItem('csvAuditLogs', JSON.stringify(csvAuditLogs));
-            localStorage.setItem('currentLab', state.currentLab);
+            sessionStorage.setItem('labProfiles', JSON.stringify(labProfiles));
+            sessionStorage.setItem('activityLogs', JSON.stringify(activityLogs));
+            sessionStorage.setItem('csvAuditLogs', JSON.stringify(csvAuditLogs));
+            sessionStorage.setItem('currentLab', state.currentLab);
         }
 
-        /* --- LOGGING & AUDIT TRAIL RECORDING --- */
+        /* --- LOGGING RECORDING --- */
         function addLog(location, category, actionType, details) {
             let now = new Date();
             let timestamp = now.getFullYear() + "-" + 
@@ -305,7 +297,7 @@
 
         /* --- DASHBOARD MAIN --- */
         function renderHome(container) {
-            let labs = Object.keys(labProfiles).filter(isValidLocationName);
+            let labs = Object.keys(labProfiles).filter(isValidSheetLocationName);
             let optionsHTML = labs.length > 0 
                 ? labs.map(lab => `<option value="${lab}" ${lab === state.currentLab ? 'selected' : ''}>${lab}</option>`).join('')
                 : `<option value="">-- No Lab Location Found --</option>`;
@@ -352,11 +344,11 @@
         }
 
         function addLabPrompt() {
-            let name = prompt("Enter New Lab Location Name:");
+            let name = prompt("Enter New Lab Location Name (e.g. N101A, SE009):");
             if (name && name.trim()) {
-                name = name.trim();
-                if (!isValidLocationName(name)) {
-                    alert("Invalid lab location name!");
+                name = name.trim().toUpperCase();
+                if (!isValidSheetLocationName(name)) {
+                    alert("Invalid lab location name! Enter valid room code like N101A, P103, SE009.");
                     return;
                 }
                 if (!labProfiles[name]) {
@@ -377,7 +369,7 @@
                 let deletedLab = state.currentLab;
                 delete labProfiles[state.currentLab];
                 addLog(deletedLab, 'Location', 'DELETED', `Deleted lab profile: ${deletedLab}`);
-                let keys = Object.keys(labProfiles).filter(isValidLocationName);
+                let keys = Object.keys(labProfiles).filter(isValidSheetLocationName);
                 state.currentLab = keys.length > 0 ? keys[0] : '';
                 saveData();
                 render();
@@ -486,14 +478,14 @@
             if (!activeLab) return [];
             let q = state.searchQuery;
 
-            if (state.currentScreen === 'EQUIPMENT_LIST') return activeLab.equipmentList.filter(i => matchesQuery(i.name, q) || matchesQuery(i.code, q));
+            if (state.currentScreen === 'EQUIPMENT_LIST') return activeLab.equipmentList.filter(i => matchesQuery(i.name, q) || matchesQuery(i.code, q) || matchesQuery(i.poNo, q));
             if (state.currentScreen === 'TEACHING_LIST') return activeLab.teachingList.filter(i => matchesQuery(i.name, q));
             if (state.currentScreen === 'FAULTY_LIST') return activeLab.faultyList.filter(i => matchesQuery(i.name, q) || matchesQuery(i.stockCode, q));
             if (state.currentScreen === 'WRITEOFF_LIST') return activeLab.writeOffList.filter(i => matchesQuery(i.name, q) || matchesQuery(i.code, q));
             return [];
         }
 
-        /* --- 1. EQUIPMENT MODULE --- */
+        /* --- 1. EQUIPMENT MODULE WITH 3 FIELDS --- */
         function renderEquipmentList(container) {
             renderSearchBar(container, "Search Equipment Name...");
             let items = getFilteredCurrentItems();
@@ -516,17 +508,20 @@
             let item = activeLab ? activeLab.equipmentList.find(i => i.code === state.editingId) : null;
             state.tempImgUri = state.tempImgUri !== null ? state.tempImgUri : (item ? item.imageUri : null);
 
-            let labsOptions = Object.keys(labProfiles).filter(isValidLocationName).map(l => 
+            let labsOptions = Object.keys(labProfiles).filter(isValidSheetLocationName).map(l => 
                 `<option value="${l}" ${l === state.currentLab ? 'selected' : ''}>${l}</option>`
             ).join('');
 
             container.innerHTML = `
                 ${renderImageEditorHTML()}
                 <label>📦 Stock List Number / Equipment Code:</label>
-                <input type="text" id="eq-code" placeholder="e.g. ST/P103/2015/E001" value="${item ? item.code : ''}">
+                <input type="text" id="eq-code" placeholder="e.g. ST/P103/2010/E001" value="${item ? item.code : ''}">
                 
                 <label>⚙ Equipment Name:</label>
                 <input type="text" id="eq-name" placeholder="e.g. Governors Apparatus" value="${item ? item.name : ''}">
+
+                <label>📄 Purchase Order No:</label>
+                <input type="text" id="eq-pono" placeholder="e.g. 56868A" value="${item ? (item.poNo || '') : ''}">
 
                 <label>📍 Location / Room (Transfer Equipment):</label>
                 <select id="eq-lab-target">
@@ -542,6 +537,7 @@
         function saveEquipment() {
             let code = document.getElementById('eq-code').value.trim();
             let name = document.getElementById('eq-name').value.trim();
+            let poNo = document.getElementById('eq-pono').value.trim();
             let targetLab = document.getElementById('eq-lab-target').value;
             if (!code || !name) { alert("Please enter Stock Code and Equipment Name!"); return; }
 
@@ -550,23 +546,18 @@
 
             if (state.editingId) {
                 if (targetLab !== state.currentLab) {
-                    let existingItem = currentProfile.equipmentList.find(i => i.code === state.editingId);
                     currentProfile.equipmentList = currentProfile.equipmentList.filter(i => i.code !== state.editingId);
-                    
                     targetProfile.equipmentList.push({ 
-                        code, 
-                        name, 
-                        imageUri: state.tempImgUri,
-                        extraCells: existingItem ? existingItem.extraCells : {}
+                        code, name, poNo, imageUri: state.tempImgUri
                     });
                     addLog(state.currentLab, 'Equipment List', 'TRANSFERRED', `Transferred Equipment "${name}" (${code}) from ${state.currentLab} to ${targetLab}`);
                 } else {
                     let item = currentProfile.equipmentList.find(i => i.code === state.editingId);
-                    if (item) { item.code = code; item.name = name; item.imageUri = state.tempImgUri; }
+                    if (item) { item.code = code; item.name = name; item.poNo = poNo; item.imageUri = state.tempImgUri; }
                     addLog(state.currentLab, 'Equipment List', 'UPDATED', `Updated Equipment: "${name}" (${code})`);
                 }
             } else {
-                targetProfile.equipmentList.push({ code, name, imageUri: state.tempImgUri, extraCells: {} });
+                targetProfile.equipmentList.push({ code, name, poNo, imageUri: state.tempImgUri });
                 addLog(targetLab, 'Equipment List', 'ADDED', `Added Equipment: "${name}" (${code}) in ${targetLab}`);
             }
 
@@ -887,9 +878,9 @@
             container.innerHTML = html;
         }
 
-        /* --- EXPORT MASTER INVENTORY DATA INTO MULTI-TAB CATEGORIZED EXCEL (.XLSX) --- */
+        /* --- EXPORT MASTER INVENTORY DATA --- */
         function exportMasterInventoryData() {
-            let keys = Object.keys(labProfiles).filter(isValidLocationName);
+            let keys = Object.keys(labProfiles).filter(isValidSheetLocationName);
             if (keys.length === 0) {
                 alert("No inventory profiles available to export!");
                 return;
@@ -898,7 +889,7 @@
             let workbook = XLSX.utils.book_new();
 
             let categoriesData = {
-                "Equipment List": [["Location", "Item Code / Stock No.", "Equipment Name", "Status"]],
+                "Equipment List": [["Location", "Stock Code / Asset No", "Description of Stock Items", "Purchase Order No"]],
                 "Teaching Materials": [["Location", "Order ID", "Item Name", "Quantity / Unit", "Remarks"]],
                 "Faulty Report": [["Location", "Stock Code", "Equipment Name", "Problem Description", "Reported Date", "Repair Status", "Remarks"]],
                 "Asset Write Off": [["Location", "Asset Code", "Equipment / Asset Name", "Reason for Write Off", "Status", "Remarks"]]
@@ -908,7 +899,7 @@
                 let profile = labProfiles[loc];
 
                 profile.equipmentList.forEach(i => {
-                    categoriesData["Equipment List"].push([loc, i.code || '', i.name || '', 'Active']);
+                    categoriesData["Equipment List"].push([loc, i.code || '', i.name || '', i.poNo || '']);
                 });
 
                 profile.teachingList.forEach(i => {
@@ -924,11 +915,10 @@
                 });
             });
 
-            // Append each Category Sheet into Workbook
             Object.keys(categoriesData).forEach(catName => {
                 let rows = categoriesData[catName];
                 let worksheet = XLSX.utils.aoa_to_sheet(rows);
-                worksheet['!cols'] = [{ wch: 15 }, { wch: 22 }, { wch: 35 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 30 }];
+                worksheet['!cols'] = [{ wch: 15 }, { wch: 25 }, { wch: 45 }, { wch: 25 }, { wch: 15 }, { wch: 20 }, { wch: 30 }];
                 XLSX.utils.book_append_sheet(workbook, worksheet, catName);
             });
 
@@ -945,7 +935,7 @@
             }
         }
 
-        /* --- SMART IMPORT PARSER FOR MULTI-TAB EXCEL & CSV --- */
+        /* --- DYNAMIC MULTI-COLUMN MATCHING PARSER FOR TAR UMT STOCKLISTS --- */
         function handleFileImportSelected(e, isOverwrite = false) {
             let file = e.target.files[0];
             if (!file) return;
@@ -967,41 +957,31 @@
                         let csvText = evt.target.result;
                         let lines = csvText.split("\n");
 
-                        lines.forEach((line, idx) => {
+                        lines.forEach((line) => {
                             if (!line.trim()) return;
-                            let lineLower = line.toLowerCase();
-
-                            if (idx === 0 && (lineLower.includes("location") || lineLower.includes("timestamp") || lineLower.includes("no."))) return;
-
                             let cols = line.split(",").map(c => c.replace(/^"|"$/g, "").trim());
 
                             if (cols.length >= 3) {
-                                let locCandidate = cols[0];
-                                let categoryCandidate = cols[1];
-                                let code = cols[2];
-                                let name = cols[3] || cols[2];
-                                let extraVal = cols[4] || "";
-
-                                if (isValidLocationName(locCandidate)) {
-                                    let loc = locCandidate;
-                                    if (!labProfiles[loc]) {
-                                        labProfiles[loc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
+                                let locCode = cols[0].trim().toUpperCase();
+                                if (isValidSheetLocationName(locCode)) {
+                                    if (!labProfiles[locCode]) {
+                                        labProfiles[locCode] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                                     }
-                                    let profile = labProfiles[loc];
-                                    let cat = String(categoryCandidate).toLowerCase();
+                                    let profile = labProfiles[locCode];
+                                    let cat = String(cols[1]).toLowerCase();
 
                                     if (cat.includes("teaching")) {
-                                        profile.teachingList.push({ id: code || `TM-${Date.now()}`, name, qtyUnit: extraVal || "1 unit", remarks: "", imageUri: null });
+                                        profile.teachingList.push({ id: cols[2] || `TM-${Date.now()}`, name: cols[3] || cols[2], qtyUnit: cols[4] || "1 unit", remarks: "", imageUri: null });
                                         itemsImported++;
                                     } else if (cat.includes("faulty")) {
-                                        profile.faultyList.push({ id: `F-${Date.now()}`, stockCode: code, name, problem: extraVal || "Faulty", date: new Date().toISOString().substring(0,10), status: extraVal || "Pending Repair", remarks: "", imageUri: null });
+                                        profile.faultyList.push({ id: `F-${Date.now()}`, stockCode: cols[2], name: cols[3] || cols[2], problem: cols[4] || "Faulty", date: new Date().toISOString().substring(0,10), status: cols[4] || "Pending Repair", remarks: "", imageUri: null });
                                         itemsImported++;
                                     } else if (cat.includes("write off")) {
-                                        profile.writeOffList.push({ code: code || `AST-${Date.now()}`, name, reason: extraVal || "Damaged", status: extraVal || "Pending", remarks: "", imageUri: null });
+                                        profile.writeOffList.push({ code: cols[2] || `AST-${Date.now()}`, name: cols[3] || cols[2], reason: cols[4] || "Damaged", status: cols[4] || "Pending", remarks: "", imageUri: null });
                                         itemsImported++;
                                     } else {
-                                        if (name) {
-                                            profile.equipmentList.push({ code: code || `EQ-${Date.now()}`, name, imageUri: null, extraCells: {} });
+                                        if (cols[3] || cols[2]) {
+                                            profile.equipmentList.push({ code: cols[2] || '', name: cols[3] || cols[2], poNo: cols[4] || "", imageUri: null });
                                             itemsImported++;
                                         }
                                     }
@@ -1009,78 +989,82 @@
                             }
                         });
                     } else {
-                        // Multi-Tab Excel Parser
+                        // Multi-Tab Excel Parser reading strictly from Tab Names
                         let arrayBuffer = evt.target.result;
                         let workbook = XLSX.read(arrayBuffer, { type: 'array' });
 
                         workbook.SheetNames.forEach(sheetName => {
-                            let sheetCatName = sheetName.trim();
-                            let worksheet = workbook.Sheets[sheetName];
-                            let jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
+                            let locCode = sheetName.trim().toUpperCase();
 
-                            jsonRows.forEach((row, rIdx) => {
-                                if (!row || row.length < 2) return;
-                                let rowStr = row.join(" ").toLowerCase();
-                                if (rIdx < 5 && (rowStr.includes("timestamp") || rowStr.includes("stock code") || rowStr.includes("equipment list") || rowStr.includes("location"))) return;
+                            if (isValidSheetLocationName(locCode)) {
+                                let worksheet = workbook.Sheets[sheetName];
+                                let jsonRows = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
 
-                                // Column 0 / 1 checking for Location
-                                let locCandidate = row[0] ? String(row[0]).trim() : (row[1] ? String(row[1]).trim() : '');
-                                if (!isValidLocationName(locCandidate)) {
-                                    // Check column 20 or other columns for location string
-                                    for (let colIdx = 0; colIdx < row.length; colIdx++) {
-                                        let val = row[colIdx] ? String(row[colIdx]).trim() : '';
-                                        if (isValidLocationName(val)) {
-                                            locCandidate = val;
-                                            break;
-                                        }
-                                    }
+                                if (!labProfiles[locCode]) {
+                                    labProfiles[locCode] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
                                 }
+                                let profile = labProfiles[locCode];
 
-                                if (isValidLocationName(locCandidate)) {
-                                    let targetLoc = locCandidate;
-                                    if (!labProfiles[targetLoc]) {
-                                        labProfiles[targetLoc] = { equipmentList: [], teachingList: [], faultyList: [], writeOffList: [] };
+                                let descColIndex = -1;
+                                let stockCodeColIndex = -1;
+                                let poColIndex = -1;
+                                let headerFound = false;
+
+                                jsonRows.forEach((row) => {
+                                    if (!row || row.length === 0) return;
+
+                                    // Scan rows dynamically to locate column indices
+                                    if (!headerFound) {
+                                        for (let colIdx = 0; colIdx < row.length; colIdx++) {
+                                            let cellText = String(row[colIdx] || '').trim().toLowerCase();
+                                            
+                                            if (cellText.includes("description of stock items") || cellText.includes("description of stock")) {
+                                                descColIndex = colIdx;
+                                                headerFound = true;
+                                            }
+                                            if (cellText.includes("stock code") || cellText.includes("stock list number") || cellText.includes("asset no")) {
+                                                stockCodeColIndex = colIdx;
+                                            }
+                                            if (cellText.includes("po no") || cellText.includes("purchase order")) {
+                                                poColIndex = colIdx;
+                                            }
+                                        }
+                                        return;
                                     }
-                                    let profile = labProfiles[targetLoc];
 
-                                    let catLower = sheetCatName.toLowerCase();
-                                    let codeVal = row[1] ? String(row[1]).trim() : `EQ-${Date.now()}`;
-                                    let nameVal = row[2] ? String(row[2]).trim() : (row[3] ? String(row[3]).trim() : '');
-                                    let extraVal1 = row[3] ? String(row[3]).trim() : '';
-                                    let extraVal2 = row[4] ? String(row[4]).trim() : '';
+                                    // Fallback column positions if specific headers are missing
+                                    let actualDescCol = descColIndex !== -1 ? descColIndex : 2;
+                                    let actualCodeCol = stockCodeColIndex !== -1 ? stockCodeColIndex : 1;
+                                    let actualPoCol = poColIndex !== -1 ? poColIndex : 3;
 
-                                    if (catLower.includes("teaching")) {
-                                        if (nameVal || codeVal) {
-                                            profile.teachingList.push({ id: codeVal || `TM-${Date.now()}`, name: nameVal || codeVal, qtyUnit: extraVal1 || "1 unit", remarks: extraVal2 || "", imageUri: null });
-                                            itemsImported++;
-                                        }
-                                    } else if (catLower.includes("faulty")) {
-                                        if (nameVal || codeVal) {
-                                            profile.faultyList.push({ id: `F-${Date.now()}`, stockCode: codeVal, name: nameVal || codeVal, problem: extraVal1 || "Reported", date: new Date().toISOString().substring(0,10), status: extraVal2 || "Pending Repair", remarks: "", imageUri: null });
-                                            itemsImported++;
-                                        }
-                                    } else if (catLower.includes("write off")) {
-                                        if (nameVal || codeVal) {
-                                            profile.writeOffList.push({ code: codeVal || `AST-${Date.now()}`, name: nameVal || codeVal, reason: extraVal1 || "Write Off", status: extraVal2 || "Pending", remarks: "", imageUri: null });
-                                            itemsImported++;
-                                        }
-                                    } else {
-                                        // Default Equipment List
-                                        let descName = nameVal || (row[19] ? String(row[19]).trim() : (row[3] ? String(row[3]).trim() : ''));
-                                        let stockCode = codeVal || (row[18] ? String(row[18]).trim() : `EQ-${Date.now()}`);
+                                    let descName = row[actualDescCol] ? String(row[actualDescCol]).trim() : '';
+                                    let stockCodeVal = row[actualCodeCol] ? String(row[actualCodeCol]).trim() : '';
+                                    let poVal = row[actualPoCol] ? String(row[actualPoCol]).trim() : '';
 
-                                        if (descName && descName.length > 1 && isValidLocationName(targetLoc)) {
-                                            profile.equipmentList.push({ code: stockCode, name: descName, imageUri: null, extraCells: {} });
-                                            itemsImported++;
-                                        }
+                                    // Avoid header noise / titles
+                                    if (descName && descName.length > 2 && 
+                                        !descName.toLowerCase().startsWith("description") && 
+                                        !descName.toLowerCase().startsWith("division") && 
+                                        !descName.toLowerCase().startsWith("faculty") && 
+                                        !descName.toLowerCase().startsWith("department") &&
+                                        !descName.toLowerCase().startsWith("asset stocklist") &&
+                                        !descName.toLowerCase().startsWith("tunku abdul rahman")) {
+                                        
+                                        profile.equipmentList.push({ 
+                                            code: stockCodeVal || `ST/${locCode}/EQ-${Date.now()}`, 
+                                            name: descName, 
+                                            poNo: poVal, 
+                                            imageUri: null 
+                                        });
+                                        itemsImported++;
                                     }
-                                }
-                            });
+                                });
+                            }
                         });
                     }
 
                     cleanInvalidLocations();
-                    let keys = Object.keys(labProfiles).filter(isValidLocationName);
+                    let keys = Object.keys(labProfiles).filter(isValidSheetLocationName);
                     state.currentLab = keys.length > 0 ? keys[0] : '';
 
                     addLog(state.currentLab || 'SYSTEM', 'Import File', 'IMPORTED', `${isOverwrite ? 'Cleared recent data & loaded' : 'Imported'} ${itemsImported} item(s) from "${file.name}"`);
